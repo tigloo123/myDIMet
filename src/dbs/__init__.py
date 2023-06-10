@@ -32,3 +32,8 @@ class PostgreSQLConnection(DBConnection):
 
     def connect(self) -> None:
         print(f"PostgreSQL connecting to {self.host} via port {self.port}")
+    @validator("port")
+    def validate_port(cls, port: int) -> int:
+        if port < 0:
+            raise ValueError(f"'port' can't be less than 0, got: {port}")
+        return port
