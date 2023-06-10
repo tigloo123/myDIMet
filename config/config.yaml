@@ -1,2 +1,11 @@
+hydra:
+  run:
+    dir: ../results/${now:%Y-%m-%d}/${now:%H-%M-%S}/${analysis.dataset.label}-${analysis.method.label}
+
 batch_size: 10
 lr: 1e-4
+# check https://hydra.cc/docs/patterns/specializing_config/ for more info about this
+defaults:
+  - analysis: toy1_abundance_plot
+  - db: postgresql
+  - _self_

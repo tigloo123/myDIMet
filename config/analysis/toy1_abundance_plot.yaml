@@ -1,0 +1,6 @@
+label: toy1_abundance_plot
+control: 1,2
+condition: 3,4
+defaults:
+  - dataset: toy1
+  - method: metabologram

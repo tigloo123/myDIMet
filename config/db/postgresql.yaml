@@ -1,0 +1,6 @@
+_target_: dbs.PostgreSQLConnection
+host: localhost
+user: root
+password: 1234
+database: tutorial
+port: 5432
