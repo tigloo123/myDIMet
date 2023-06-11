@@ -10,7 +10,8 @@ defaults:
   - _self_
 
 data_path: "/Users/macha/Projects/myDIMet/data/example_diff"
-output_path: figures
+figure_path: figures
+output_path: tables
 suffix : cyc1
 
 # metabolites to plot:

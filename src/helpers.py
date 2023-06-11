@@ -16,6 +16,17 @@ import re
 
 import constants
 
+def df_to_dict_by_compartment(df: pd.DataFrame, metadata: pd.DataFrame) -> dict:
+    '''
+    splits df into a dictionary of dataframes, each for one compartment
+    '''
+    output_dict = dict()
+    for compartment in metadata['short_comp'].unique():
+        metada_co = metadata.loc[metadata['short_comp'] == compartment, :]
+        df_co = df.loc[:, metada_co['original_name']]
+        output_dict[compartment] = df_co
+    return output_dict
+
 def open_config_file(config_file):
     """
         Opens and loads a YAML configuration file.
@@ -110,7 +121,7 @@ def open_metadata(file_path):
         raise ValueError("\nproblem opening configuration file")
 
 
-def verify_metadata_sample_not_duplicated(metadata_df) -> None:
+def verify_metadata_sample_not_duplicated(metadata_df : pd.DataFrame) -> None:
     def yield_repeated_elems(mylist):
         occur_dic = dict(map(lambda x: (x, list(mylist).count(x)),
                              mylist))  # credits: w3resource.com

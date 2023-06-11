@@ -10,6 +10,8 @@ from pydantic import validator
 
 from pydantic import BaseModel as PydanticBaseModel
 
+import helpers
+
 
 class BaseModel(PydanticBaseModel):
     class Config:
@@ -27,10 +29,10 @@ class DatasetConfig(BaseModel):
     # We allow for some default values for the following files
     # will be ignored if they do not exist
 
-    name_abundance: str = "AbundanceCorrected"
-    name_meanE_or_fracContrib: str = "MeanEnrichment13C"
-    name_isotopologue_prop: str = "IsotopologuesProp"  # isotopologue proportions
-    name_isotopologue_abs: str = "IsotopologuesAbs"  # isotopologue absolute values
+    abundance_file_name: str = "AbundanceCorrected"
+    meanE_or_fracContrib_file_name: str = "MeanEnrichment13C"
+    isotopologue_prop_file_name: str = "IsotopologuesProp"  # isotopologue proportions
+    isotopologue_abs_file_name: str = "IsotopologuesAbs"  # isotopologue absolute values
 
     def build(self) -> "Dataset":
         return Dataset(config=self)
@@ -61,10 +63,10 @@ class Dataset(BaseModel):
         # start loading the dataframes
         file_paths = [
             ("metadata", os.path.join(self.raw_data_folder, self.config.metadata + ".csv")),
-            ("abundance", os.path.join(self.raw_data_folder, self.config.name_abundance + ".csv")),
-            ("meanE_or_fracContrib", os.path.join(self.raw_data_folder, self.config.name_meanE_or_fracContrib + ".csv")),
-            ("isotopologue_prop", os.path.join(self.raw_data_folder, self.config.name_isotopologue_prop + ".csv")),
-            ("isotopologue_abs", os.path.join(self.raw_data_folder, self.config.name_isotopologue_abs + ".csv"))
+            ("abundance", os.path.join(self.raw_data_folder, self.config.abundance_file_name + ".csv")),
+            ("meanE_or_fracContrib", os.path.join(self.raw_data_folder, self.config.meanE_or_fracContrib_file_name + ".csv")),
+            ("isotopologue_prop", os.path.join(self.raw_data_folder, self.config.isotopologue_prop_file_name + ".csv")),
+            ("isotopologue_abs", os.path.join(self.raw_data_folder, self.config.isotopologue_abs_file_name + ".csv"))
         ]
         dfs = []
         for label, file_path in file_paths:
@@ -81,13 +83,14 @@ class Dataset(BaseModel):
 
         # log the first 5 rows of the metadata
         logger.info("Loaded metadata: \n%s", self.metadata_df.head())
-        logger.info("Finished loading dataset %s, available dataframes are : %s", self.config.label, self.available_datasets)
+        logger.info("Finished loading raw dataset %s, available dataframes are : %s", self.config.label, self.available_datasets)
 
     def load_abundance_compartment_data(self, suffix) -> pd.DataFrame:
         compartments = self.metadata_df['short_comp'].unique().tolist()
-        table_prefix = self.config.name_abundance
+        table_prefix = self.config.abundance_file_name
         the_folder = self.processed_data_folder
         for c in compartments:
             fn = f'{table_prefix}--{c}--{suffix}.tsv'
             self.compartmentalized_dfs[c] = pd.read_csv(os.path.join(self.processed_data_folder, fn), sep='\t', header=0, index_col=0)
             logger.info("Loaded compartmentalized DF for %s", c)
+
