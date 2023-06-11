@@ -16,21 +16,25 @@ import re
 
 import constants
 
-def open_config_file(confifile):
+def open_config_file(config_file):
+    """
+        Opens and loads a YAML configuration file.
+        Returns: Loaded configuration dictionary.
+        """
     try:
-        with open(confifile, "r") as f:
-            confidic = yaml.load(f, Loader=yaml.Loader)
+        with open(config_file, "r") as f:
+            config_dic = yaml.load(f, Loader=yaml.Loader)
     except yaml.YAMLError as yam_err:
         print(yam_err)
-        confidic = None
+        config_dic = None
     except Exception as e:
         print(e)
-        confidic = None
+        config_dic = None
 
-    if confidic is None:
-        raise ValueError("\nimpossible to read configuration file")
+    if config_dic is None:
+        raise ValueError("\nimpossible to read the configuration file")
 
-    return confidic
+    return config_dic
 
 
 def check_dict_has_keys(d: dict, expected_keys: list) -> np.array:

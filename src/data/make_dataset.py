@@ -148,8 +148,8 @@ def perform_prep(args, confidic, meta_path, out_path) -> None:
 
 # Runs data processing scripts to turn raw data from (../raw) into
 #  cleaned data ready to be analyzed (saved in ../processed).
-# make_dataset.py --datadir /Users/macha/Projects/myDIMet/data/example_diff/ --config raw/data_config_example_diff.yml
-# make_dataset.py --datadir /Users/hayssam/temp/myDIMet/data/example_diff/ --config raw/data_config_example_diff.yml
+# make_dataset.py --datadir /Users/macha/Projects/myDIMet/data/example_diff/ --config raw/data_config_example_diff.yaml
+# make_dataset.py --datadir /Users/hayssam/temp/myDIMet/data/example_diff/ --config raw/data_config_example_diff.yaml
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

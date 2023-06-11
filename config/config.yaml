@@ -1,17 +1,16 @@
 hydra:
+  job:
+    chdir: true
   run:
     dir: ../outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}/${analysis.dataset.label}-${analysis.method.label}
 
-batch_size: 10
-lr: 1e-4
 # check https://hydra.cc/docs/patterns/specializing_config/ for more info about this
 defaults:
-  - analysis: toy1_abundance_plot
-  - db: postgresql
+  - analysis: example_diff_abundance_plot
   - _self_
 
-data_path: "/Users/hayssam/temp/myDIMet/data/example_diff"
-output_path: "/Users/hayssam/temp/myDIMet/outputs/abundance_plots/"
+data_path: "/Users/macha/Projects/myDIMet/data/example_diff"
+output_path: figures
 suffix : cyc1
 
 # metabolites to plot:

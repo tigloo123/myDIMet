@@ -1,4 +1,4 @@
-label: toy1_abundance_plot
+label: example_diff_abundance_plot
 # Abundances bars configuration
 # -----------------------------
 time_sel :

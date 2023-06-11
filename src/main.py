@@ -1,42 +1,34 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-@author: Johanna Galvis, Florian Specque, Macha Nikolski
-"""
-
-import hydra
+import logging
 import os
 
-from hydra.core.config_store import ConfigStore
+import hydra
 from omegaconf import DictConfig, OmegaConf
-import logging
 
-from data import Dataset, DatasetConfig
-from dbs import PostgreSQLConnection
-from method import Method
+from data import Dataset
+from visualization.abundance_bars import run_steps_abund_bars
 
 logger = logging.getLogger(__name__)
 
-cs = ConfigStore.instance()
-
 
 @hydra.main(config_path="../config", config_name="config", version_base=None)
-def func(cfg: DictConfig):
-    working_dir = os.getcwd()
-    print(f"The current working directory is {working_dir}")
-    print(OmegaConf.to_yaml(cfg))
-    # To access elements of the config
-    print(f"The batch size is {cfg.batch_size}")
-    print(f"The learning rate is {cfg['lr']}")
-    logger.info("Hello from main.py")
-    logger.warning("warning from main.py")
-    connection = hydra.utils.instantiate(cfg.db)
-    connection.connect()
+def main(cfg: DictConfig):
+    logger.info(f"The current working directory is {os.getcwd()}")
+    logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
     dataset: Dataset = Dataset(config=hydra.utils.instantiate(cfg.analysis.dataset))
     dataset.preload()
-    method: Method = hydra.utils.instantiate(cfg.analysis.method).build()
-    method.plot()
+    dataset.load_abundance_compartment_data(suffix=cfg.suffix)
+    abund_tab_prefix = cfg.analysis.dataset.name_abundance
+    out_plot_dir = os.path.join(os.getcwd(), cfg.output_path)
+    os.mkdir(out_plot_dir)
+    run_steps_abund_bars(
+        abund_tab_prefix,
+        dataset,
+        out_plot_dir,
+        cfg)
 
 
 if __name__ == "__main__":
-    func()
+    # parser = bars_args()
+    # args = parser.parse_args()
+    # process(args)
+    main()
