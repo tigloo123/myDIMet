@@ -42,7 +42,7 @@ class Dataset(BaseModel):
     isotopologue_prop_df: Optional[pd.DataFrame] = None
     isotopologue_abs_df: Optional[pd.DataFrame] = None
     available_datasets: Set[Literal["metadata", "abundance", "meanE_or_fracContrib", "isotopologue_prop", "isotopologue_abs"]] = set()
-    compartmentalized_dfs: Dict[str, pd.DataFrame] = {}
+    compartmentalized_dfs: Dict[str, Dict[str,pd.DataFrame]] = {}
 
     def preload(self):
         # check if we have a relative or absolute path, compute the absolute path then load the data using pandas
@@ -81,10 +81,14 @@ class Dataset(BaseModel):
 
     def load_compartmentalized_data(self, suffix) -> pd.DataFrame:
         compartments = self.metadata_df['short_comp'].unique().tolist()
-        table_prefix = self.config.abundance_file_name
         for c in compartments:
-            fn = f'{table_prefix}--{c}--{suffix}.tsv'
-            self.compartmentalized_dfs[c] = pd.read_csv(os.path.join(self.processed_data_folder, fn),
-                                                        sep='\t', header=0, index_col=0)
-            logger.info("Loaded compartmentalized DF for %s", c)
+            file_paths = [
+                ("abundance_file_name", os.path.join(self.processed_data_folder,f'{self.config.abundance_file_name}--{c}--{suffix}.tsv')),
+                ("meanE_or_fracContrib_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundance_file_name}--{c}--{suffix}.tsv')),
+                ("isotopologue_prop_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundance_file_name}--{c}--{suffix}.tsv')),
+                ("isotopologue_abs_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundance_file_name}--{c}--{suffix}.tsv'))
+            ]
 
+            for label, fp in file_paths:
+                self.compartmentalized_dfs[label][c] = pd.read_csv(fp, sep='\t', header=0, index_col=0)
+                logger.info("Loaded compartmentalized %s DF for %s", label, c)

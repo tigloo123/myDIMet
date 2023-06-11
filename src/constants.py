@@ -3,6 +3,11 @@
 """
 @author: Johanna Galvis, Florian Specque, Macha Nikolski
 """
+from typing import Literal, get_args
+
+
+def assert_literal(value:str,lit_type):
+    assert value in get_args(lit_type)
 
 data_files_keys = ['abundance_file_name', 'meanE_or_fracContrib_file_name',
                    'isotopologue_prop_file_name', 'isotopologue_abs_file_name']

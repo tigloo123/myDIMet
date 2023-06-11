@@ -165,7 +165,7 @@ def run_steps_abund_bars(
         # the_folder = f'{data_path}/processed/'
         # fn = f'{the_folder}{table_prefix}--{c}--{suffix}.tsv'
         # abundance_df = pd.read_csv(fn, sep='\t', header=0, index_col=0)
-        compartment_df = dataset.compartmentalized_dfs[c]
+        compartment_df = dataset.compartmentalized_dfs['abundance_file_name'][c]
         # metadata and abundances time of interest
         metada_sel = metadata_compartment_df.loc[metadata_compartment_df["timepoint"].isin(time_sel), :]
         abu_sel = compartment_df[metada_sel['name_to_plot']]
