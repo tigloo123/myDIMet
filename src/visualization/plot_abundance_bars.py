@@ -1,25 +1,22 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-Created on Sat May 28 09:33:01 2022
-Uses only abundances
+# Credits: Johanna Galvis, Macha Nikolski
 
-@author: johanna
-"""
 import os
 import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import functions_general as fg
+import helpers
 
 def bars_args():
-    parser = argparse.ArgumentParser(
-        prog="python -m DIMet.src.abundance_bars",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser()
 
-    parser.add_argument('config', type=str,
+    parser.add_argument('--aconfig', type=str,
                         help="configuration file in absolute path")
+
+    parser.add_argument('--dconfig', type=str,
+                        help="data configuration file in absolute path")
 
     parser.add_argument('--palette',  default="pastel",
                         help="qualitative or categorical palette name as in \
@@ -146,20 +143,20 @@ def printabundbarswithdots(piled_sel, selectedmets, CO, SMX,
 
 
 def run_steps_abund_bars(table_prefix,  metadatadf,
-                         out_plot_dir, confidic, args) -> None:
-    time_sel = confidic["time_sel"]  # locate where it is used
-    selectedmetsD = confidic["metabolites_to_plot"]  # locate where it is used
-    condilevels = confidic["conditions"]  # <= locate where it is used
+                         out_plot_dir, analysis_confidic, args) -> None:
+    time_sel = analysis_confidic["time_sel"]  # locate where it is used
+    selectedmetsD = analysis_confidic["metabolites_to_plot"]  # locate where it is used
+    condilevels = analysis_confidic["conditions"]  # <= locate where it is used
 
-    axisx_labeltilt = int(confidic["axisx_labeltilt"])
-    axisx_var = confidic["axisx"]
-    hue_var = confidic["barcolor"]
+    axisx_labeltilt = int(analysis_confidic["axisx_labeltilt"])
+    axisx_var = analysis_confidic["axisx"]
+    hue_var = analysis_confidic["barcolor"]
 
-    width_each_subfig = float(confidic["width_each_subfig"])
-    wspace_subfigs = float(confidic["wspace_subfigs"])
+    width_each_subfig = float(analysis_confidic["width_each_subfig"])
+    wspace_subfigs = float(analysis_confidic["wspace_subfigs"])
 
-    out_path = os.path.expanduser(confidic['out_path'])
-    suffix = confidic['suffix']
+    out_path = analysis_confidic["output_path"]
+    suffix = analysis_confidic['suffix']
     compartments = metadatadf['short_comp'].unique().tolist()
     # dynamically open the file based on prefix, compartment and suffix:
     for co in compartments:
@@ -187,23 +184,22 @@ def run_steps_abund_bars(table_prefix,  metadatadf,
                                out_plot_dir, axisx_labeltilt,
                                wspace_subfigs, args)
 
-
+# plot_abundances_bars.py --aconfig /Users/macha/Projects/myDIMet/config/config.yaml
+# --dconfig /Users/macha/Projects/myDIMet/data/example_diff/raw/data_config_example.yml
 if __name__ == "__main__":
     parser = bars_args()
     args = parser.parse_args()
-    configfile = os.path.expanduser(args.config)
-    confidic = fg.open_config_file(configfile)
-    fg.auto_check_validity_configuration_file(confidic)
-    confidic = fg.remove_extensions_names_measures(confidic)
+    analysis_confidic = helpers.open_config_file(args.aconfig)
+    data_confidic = helpers.open_config_file(args.dconfig)
+#    helpers.auto_check_validity_configuration_file(confidic) --> was for files
+#    confidic = helpers.remove_extensions_names_measures(confidic) --> I do not see why
 
-    out_path = os.path.expanduser(confidic['out_path'])
-    meta_path = os.path.expanduser(confidic['metadata_path'])
-    clean_tables_path = out_path + "results/prepared_tables/"
+    out_path = os.path.expanduser(analysis_confidic['output_path'])
+    meta_file = "/Users/macha/Projects/myDIMet/data/example_diff/raw/metadata.csv"
+    metadatadf = helpers.open_metadata(meta_file)
 
-    metadatadf = fg.open_metadata(meta_path)
-
-    abund_tab_prefix = confidic['name_abundance']
-    out_plot_dir = out_path + "results/plots/bars_Abundance/"
-    fg.detect_and_create_dir(out_plot_dir)
-    run_steps_abund_bars(abund_tab_prefix,  metadatadf,
-                         out_plot_dir, confidic, args)
+    abund_tab_prefix = data_confidic['abundance_file_name']
+    out_plot_dir = out_path
+    helpers.detect_and_create_dir(out_plot_dir)
+    run_steps_abund_bars(abund_tab_prefix, metadatadf,
+                         out_plot_dir, analysis_confidic, args)

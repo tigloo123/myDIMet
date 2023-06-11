@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+@author: Johanna Galvis, Florian Specque, Macha Nikolski
+"""
+
 import hydra
 import os
 from omegaconf import DictConfig
