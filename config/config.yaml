@@ -1,6 +1,6 @@
 hydra:
   run:
-    dir: ../results/${now:%Y-%m-%d}/${now:%H-%M-%S}/${analysis.dataset.label}-${analysis.method.label}
+    dir: ../outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}/${analysis.dataset.label}-${analysis.method.label}
 
 batch_size: 10
 lr: 1e-4
@@ -10,8 +10,8 @@ defaults:
   - db: postgresql
   - _self_
 
-data_path: "/Users/macha/Projects/DIMet/data/example_diff"
-output_path: "/Users/macha/Projects/DIMet/results/abundance_plots"
+data_path: "/Users/hayssam/temp/myDIMet/data/example_diff"
+output_path: "/Users/hayssam/temp/myDIMet/outputs/abundance_plots/"
 suffix : cyc1
 
 # metabolites to plot:
@@ -80,3 +80,7 @@ thresholds:
 
 # -------------------- end of config file ---------------------
 # NOTE: Metabolograms need a separated configuration file
+
+# Added
+palette: pastel
+x_text: ''

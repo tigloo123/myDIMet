@@ -48,7 +48,7 @@ def check_dict_has_known_values(d: dict, possible_values: list) -> np.array:
 
 
 def auto_check_validity_configuration_file(confidic) -> None:
-    expected_keys = constants.data_files_keys + ['conditions', 'suffix']
+    expected_keys = constants.data_files_keys#  + ['conditions', 'suffix']
     has_key = check_dict_has_keys(confidic, expected_keys)
     missing_keys = np.array(expected_keys)[~has_key].tolist()
     assert all(has_key), f"{missing_keys} : missing in configuration file! "
@@ -394,3 +394,10 @@ def save_rawisos_plot(dfmelt, figuretitle, outputfigure) -> None:
     plt.xlabel("fraction")
     plt.savefig(outputfigure)
     plt.close()
+
+
+def dynamic_xposition_ylabeltext(plotwidth) -> float:
+    position_float = (plotwidth * 0.00145)
+    if position_float < 0.01:
+        position_float = 0.01
+    return position_float

@@ -2,34 +2,23 @@
 # -*- coding: utf-8 -*-
 # Credits: Johanna Galvis, Macha Nikolski
 
+import logging
 import os
-import argparse
-import pandas as pd
+from typing import List, Any
+
+import hydra
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
-import helpers
+from hydra.core.config_store import ConfigStore
+from omegaconf import DictConfig, OmegaConf
 
+from data import Dataset
+from helpers import dynamic_xposition_ylabeltext
 
-def bars_args():
-    parser = argparse.ArgumentParser()
+logger = logging.getLogger(__name__)
 
-    parser.add_argument('--aconfig', type=str,
-                        help="configuration file in absolute path")
-
-    parser.add_argument('--dconfig', type=str,
-                        help="data configuration file in absolute path")
-
-    parser.add_argument('--palette', default="pastel",
-                        help="qualitative or categorical palette name as in \
-                        Seaborn or Matplotlib libraries (Python)")
-
-    parser.add_argument(
-        '--x_text', type=str, default="",
-        help='abbreviations for x axis ticks text. \
-        First run default to get aware of exact ticks text. Then write them \
-        separated by commas, example: "Ctl,Reac-a,Reac-b,..." ')
-
-    return parser
+cs = ConfigStore.instance()
 
 
 def pile_up_abundance(abu_sel, metada_sel):
@@ -51,10 +40,19 @@ def pile_up_abundance(abu_sel, metada_sel):
     return dafull
 
 
-def printabundbarswithdots(piled_sel, selectedmets, CO, SMX,
-                           axisx_var, hue_var, plotwidth,
-                           odirbars, axisx_labeltilt, wspace_subfigs, args):
-    selected_metabs = selectedmets
+def plot_abundance_bars(
+        piled_sel_df: pd.DataFrame,
+        selected_metabolites: List[str],
+        CO: str,
+        SMX: str,
+        axisx_var: str,
+        hue_var: str,
+        plotwidth: float,
+        odirbars: str,
+        axisx_labeltilt: int,
+        wspace_subfigs: float,
+        analysis_confidic: Any) -> int:
+    selected_metabs = selected_metabolites
     sns.set_style({"font.family": "sans-serif",
                    "font.sans-serif": "Liberation Sans"})
     plt.rcParams.update({"font.size": 21})
@@ -63,8 +61,8 @@ def printabundbarswithdots(piled_sel, selectedmets, CO, SMX,
                             sharey=False, figsize=(plotwidth, 5.5))
 
     for il in range(len(selected_metabs)):
-        herep = piled_sel.loc[
-                piled_sel["metabolite"] == selected_metabs[il], :]
+        herep = piled_sel_df.loc[
+                piled_sel_df["metabolite"] == selected_metabs[il], :]
         herep = herep.reset_index()
         sns.barplot(
             ax=axs[il],
@@ -72,7 +70,7 @@ def printabundbarswithdots(piled_sel, selectedmets, CO, SMX,
             y="abundance",
             hue=str(hue_var),
             data=herep,
-            palette=args.palette,
+            palette=analysis_confidic.palette,
             alpha=1,
             edgecolor="black",
             errcolor="black",
@@ -87,7 +85,7 @@ def printabundbarswithdots(piled_sel, selectedmets, CO, SMX,
                 y="abundance",
                 hue=str(hue_var),
                 data=herep,
-                palette=args.palette,
+                palette=analysis_confidic.palette,
                 dodge=True,
                 edgecolor="black",
                 linewidth=1.5,
@@ -100,8 +98,8 @@ def printabundbarswithdots(piled_sel, selectedmets, CO, SMX,
 
         axs[il].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 
-        if args.x_text != "":
-            the_x_text = args.x_text
+        if analysis_confidic.x_text != "":
+            the_x_text = analysis_confidic.x_text
             try:
                 xticks_text_l = the_x_text.split(",")
                 axs[il].set_xticklabels(xticks_text_l)
@@ -124,12 +122,6 @@ def printabundbarswithdots(piled_sel, selectedmets, CO, SMX,
 
     # plt.tight_layout(pad = 0.01, w_pad = -2, h_pad=0.1)
 
-    def dynamic_xposition_ylabeltext(plotwidth) -> float:
-        position_float = (plotwidth * 0.00145)
-        if position_float < 0.01:
-            position_float = 0.01
-        return position_float
-
     fig.text(x=dynamic_xposition_ylabeltext(plotwidth),
              y=0.5, s=YLABE,
              va="center", rotation="vertical", size=26)
@@ -144,8 +136,16 @@ def printabundbarswithdots(piled_sel, selectedmets, CO, SMX,
     return 0
 
 
-def run_steps_abund_bars(table_prefix, metadatadf,
-                         out_plot_dir, analysis_confidic, args) -> None:
+def run_steps_abund_bars(
+        table_prefix,
+        dataset: Dataset,
+        out_plot_dir,
+        analysis_confidic) -> None:
+    metadata_df = dataset.metadata_df
+
+
+    # This has to migrate somewhere else than the top level configuration
+    ##############################
     time_sel = analysis_confidic["time_sel"]  # locate where it is used
     selectedmetsD = analysis_confidic["metabolites_to_plot"]  # locate where it is used
     condilevels = analysis_confidic["conditions"]  # <= locate where it is used
@@ -156,21 +156,22 @@ def run_steps_abund_bars(table_prefix, metadatadf,
 
     width_each_subfig = float(analysis_confidic["width_each_subfig"])
     wspace_subfigs = float(analysis_confidic["wspace_subfigs"])
+    ##############################
 
-    out_path = analysis_confidic["output_path"]
-    data_path = analysis_confidic["data_path"]
-    suffix = analysis_confidic['suffix']
-    compartments = metadatadf['short_comp'].unique().tolist()
+    # data_path = analysis_confidic["data_path"]
+    # suffix = analysis_confidic['suffix']
+
+    compartments = metadata_df['short_comp'].unique().tolist()
     # dynamically open the file based on prefix, compartment and suffix:
-    for co in compartments:
-        metada_co = metadatadf.loc[metadatadf['short_comp'] == co, :]
-        the_folder = f'{data_path}/processed/'
-        fn = f'{the_folder}{table_prefix}--{co}--{suffix}.tsv'
-        abutab = pd.read_csv(fn, sep='\t', header=0, index_col=0)
-
+    for c in compartments:
+        metadata_compartment_df: pd.DataFrame = metadata_df.loc[metadata_df['short_comp'] == c, :]
+        # the_folder = f'{data_path}/processed/'
+        # fn = f'{the_folder}{table_prefix}--{c}--{suffix}.tsv'
+        # abundance_df = pd.read_csv(fn, sep='\t', header=0, index_col=0)
+        compartment_df = dataset.compartmentalized_dfs[c]
         # metadata and abundances time of interest
-        metada_sel = metada_co.loc[metada_co["timepoint"].isin(time_sel), :]
-        abu_sel = abutab[metada_sel['name_to_plot']]
+        metada_sel = metadata_compartment_df.loc[metadata_compartment_df["timepoint"].isin(time_sel), :]
+        abu_sel = compartment_df[metada_sel['name_to_plot']]
 
         # total piled-up data:
         piled_sel = pile_up_abundance(abu_sel, metada_sel)
@@ -179,33 +180,34 @@ def run_steps_abund_bars(table_prefix, metadatadf,
         piled_sel["timepoint"] = pd.Categorical(
             piled_sel["timepoint"], time_sel)
 
-        plotwidth = width_each_subfig * len(selectedmetsD[co])
+        plotwidth = width_each_subfig * len(selectedmetsD[c])
 
-        printabundbarswithdots(piled_sel, selectedmetsD[co], co,
-                               "total abundance",
-                               axisx_var, hue_var, plotwidth,
-                               out_plot_dir, axisx_labeltilt,
-                               wspace_subfigs, args)
+        plot_abundance_bars(piled_sel, selectedmetsD[c], c,
+                            "total abundance",
+                            axisx_var, hue_var, plotwidth,
+                            out_plot_dir, axisx_labeltilt,
+                            wspace_subfigs, analysis_confidic)
 
 
-# plot_abundances_bars.py --aconfig /Users/macha/Projects/myDIMet/config/config.yaml
-# --dconfig /Users/macha/Projects/myDIMet/data/example_diff/raw/data_config_example_diff.yml
-# plot_abundances_bars.py --aconfig /Users/hayssam/temp/myDIMet/config/config.yaml
-# --dconfig /Users/hayssam/temp/myDIMet/data/example_diff/raw/data_config_example_diff.yml
+@hydra.main(config_path="../../config", config_name="config", version_base=None)
+def main(cfg: DictConfig):
+    working_dir = os.getcwd()
+    print(f"The current working directory is {working_dir}")
+    print(OmegaConf.to_yaml(cfg))
+    dataset: Dataset = Dataset(config=hydra.utils.instantiate(cfg.analysis.dataset))
+    dataset.preload()
+    dataset.load_abundance_compartment_data(suffix=cfg.suffix)
+    abund_tab_prefix = cfg.analysis.dataset.name_abundance
+    out_plot_dir = cfg.output_path
+    run_steps_abund_bars(
+        abund_tab_prefix,
+        dataset,
+        out_plot_dir,
+        cfg)
+
+
 if __name__ == "__main__":
-    parser = bars_args()
-    args = parser.parse_args()
-    analysis_confidic = helpers.open_config_file(args.aconfig)
-    data_confidic = helpers.open_config_file(args.dconfig)
-    #    helpers.auto_check_validity_configuration_file(confidic) --> was for files
-    #    confidic = helpers.remove_extensions_names_measures(confidic) --> I do not see why
-
-    out_path = os.path.expanduser(analysis_confidic['output_path'])
-    meta_file = "/Users/hayssam/temp/myDIMet/data/example_diff/raw/metadata.csv"
-    metadatadf = helpers.open_metadata(meta_file)
-
-    abund_tab_prefix = data_confidic['abundance_file_name']
-    out_plot_dir = out_path
-    helpers.detect_and_create_dir(out_plot_dir)
-    run_steps_abund_bars(abund_tab_prefix, metadatadf,
-                         out_plot_dir, analysis_confidic, args)
+    # parser = bars_args()
+    # args = parser.parse_args()
+    # process(args)
+    main()

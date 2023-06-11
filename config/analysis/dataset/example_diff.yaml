@@ -1,0 +1,19 @@
+# indicate that we want an instance of Dataset created for this config
+_target_: data.DatasetConfig
+
+label: example_diff
+name: I am example_diff
+#if relative : within the data subfolder, if not, use an absolute path
+subfolder: example_diff
+#within the data subfolder/raw
+metadata: metadata
+
+name_abundance : rawAbundances
+name_meanE_or_fracContrib : FracContribution_C
+name_isotopologue_prop : CorrectedIsotopologues # isotopologue proportions
+name_isotopologue_abs : IsotopologuesAbs  # isotopologue absolute values
+
+conditions :
+  - sgLDHA # first must be control, when several
+
+suffix : ldh1

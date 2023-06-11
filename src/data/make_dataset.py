@@ -149,6 +149,8 @@ def perform_prep(args, confidic, meta_path, out_path) -> None:
 # Runs data processing scripts to turn raw data from (../raw) into
 #  cleaned data ready to be analyzed (saved in ../processed).
 # make_dataset.py --datadir /Users/macha/Projects/myDIMet/data/example_diff/ --config raw/data_config_example_diff.yml
+# make_dataset.py --datadir /Users/hayssam/temp/myDIMet/data/example_diff/ --config raw/data_config_example_diff.yml
+
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(level=logging.INFO, format=log_fmt)
@@ -176,4 +178,3 @@ if __name__ == '__main__':
     meta_file = os.path.expanduser(confidic['metadata_file_name'])
     out_path = args.datadir + "/processed/"
     perform_prep(args, confidic, args.datadir + "/raw/" + meta_file, out_path)
-

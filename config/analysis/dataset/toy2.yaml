@@ -1,6 +1,0 @@
-label: toy2
-name: I am toy2
-#if relative : within the data subfolder, if not, use an absolute path
-subfolder: toy2
-#within the data subfolder
-metadata: raw/metadata_toy2.csv
