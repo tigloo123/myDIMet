@@ -1,2 +1,9 @@
+# indicate that we want an instance of Dataset created for this config
+_target_: data.DatasetConfig
+
 label: toy1
 name: I am toy1
+#if relative : within the data subfolder, if not, use an absolute path
+subfolder: toy1
+#within the data subfolder
+metadata: raw/metadata_toy1.csv

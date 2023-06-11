@@ -3,6 +3,12 @@ DIMet
 
 revamp DIMet
 
+Using Hydra
+-----------
+Very straightforward tutorial here : 
+https://www.kushajveersingh.com/blog/complete-tutorial-on-how-to-use-hydra-in-machine-learning-projects
+
+
 Project Organization
 ------------
 

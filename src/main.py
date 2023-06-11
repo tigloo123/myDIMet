@@ -1,10 +1,16 @@
 import hydra
 import os
+
+from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig, OmegaConf
 import logging
 
+from data import Dataset, DatasetConfig
+from dbs import PostgreSQLConnection
+
 logger = logging.getLogger(__name__)
 
+cs = ConfigStore.instance()
 
 
 @hydra.main(config_path="../config", config_name="config", version_base=None)
@@ -19,6 +25,8 @@ def func(cfg: DictConfig):
     logger.warning("warning from main.py")
     connection = hydra.utils.instantiate(cfg.db)
     connection.connect()
+    dataset: Dataset = Dataset(config=hydra.utils.instantiate(cfg.analysis.dataset))
+    dataset.preload()
 
 
 if __name__ == "__main__":
