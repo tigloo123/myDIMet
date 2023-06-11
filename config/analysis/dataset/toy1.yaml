@@ -5,5 +5,15 @@ label: toy1
 name: I am toy1
 #if relative : within the data subfolder, if not, use an absolute path
 subfolder: toy1
-#within the data subfolder
-metadata: raw/metadata_toy1.csv
+#within the data subfolder/raw
+metadata: metadata_toy1
+
+name_abundance : AbundanceCorrected
+name_meanE_or_fracContrib : MeanEnrichment13C
+name_isotopologue_prop : IsotopologuesProp # isotopologue proportions
+name_isotopologue_abs : IsotopologuesAbs  # isotopologue absolute values
+
+conditions :
+  - sgLDHA # first must be control, when several
+
+suffix : ldh1

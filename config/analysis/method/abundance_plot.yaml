@@ -1,2 +1,8 @@
 label: abundance plot
 name: Generate abundance plots
+
+barcolor : timepoint
+axisx : condition
+axisx_labeltilt : 20 # 0 is no tilt
+width_each_subfig : 3
+wspace_subfigs : 1
