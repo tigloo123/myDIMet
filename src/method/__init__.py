@@ -1,11 +1,11 @@
 import logging
 import os
 from pathlib import Path
-from typing import Optional, List, Literal, Set
+from typing import Optional, List, Literal, Set, Any, Dict
 
 import hydra
 import pandas as pd
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, ListConfig
 
 from pydantic.dataclasses import dataclass
 from pydantic import validator
@@ -14,14 +14,13 @@ from pydantic import BaseModel as PydanticBaseModel
 
 from data import Dataset
 from visualization.abundance_bars import run_steps_abund_bars
+from processing.differential_analysis import differential_comparison_test
 
+logger = logging.getLogger(__name__)
 
 class BaseModel(PydanticBaseModel):
     class Config:
         arbitrary_types_allowed = True
-
-
-logger = logging.getLogger(__name__)
 
 
 class MethodConfig(BaseModel):
@@ -46,6 +45,18 @@ class AbundancePlotConfig(MethodConfig):
         return AbundancePlot(config=self)
 
 
+class DifferentialAnalysisConfig(MethodConfig):
+    '''
+    Sets default values or fills them from the method yaml file
+    '''
+    grouping: ListConfig = ["condition", "timepoint"]
+    comparisons: ListConfig = [["Control", "Condition"]]  # for each pair, last must be control
+    statistical_test : Dict[str, Optional[str]]
+    padj_threshold: float = 0.2
+    absolute_log2FC_threshold: float = 3
+    def build(self) -> "DifferentialAnalysis":
+        return DifferentialAnalysis(config=self)
+
 class Method(BaseModel):
     config: MethodConfig
 
@@ -62,13 +73,67 @@ class AbundancePlot(Method):
         logger.info(f"The current working directory is {os.getcwd()}")
         logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
         logger.info("Will plot the abundance plot, with the following config: %s", self.config)
-        dataset.load_abundance_compartment_data(suffix=cfg.suffix)
-        abund_tab_prefix = cfg.analysis.dataset.abundance_file_name
+        dataset.load_compartmentalized_data(suffix=cfg.suffix)
+        abundance_file_name = cfg.analysis.dataset.abundance_file_name
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
         os.mkdir(out_plot_dir)
         run_steps_abund_bars(
-            abund_tab_prefix,
+            abundance_file_name,
             dataset,
             out_plot_dir,
             cfg)
 
+class DifferentialAnalysis(Method):
+    config: DifferentialAnalysisConfig
+    def run(self, cfg: DictConfig, dataset: Dataset) -> None:
+        logger.info(f"The current working directory is {os.getcwd()}")
+        logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
+        logger.info("Will perform differential analysis, with the following config: %s", self.config)
+        dataset.load_compartmentalized_data(suffix=cfg.suffix)
+
+        for file_name, test in self.config.statistical_test.items():
+            if test is None : continue
+            logger.info(f"Testing {file_name} with {test}")
+            # modes:
+            # 'abund'
+            # 'mefc'
+            # 'isoabsol'
+            # 'isoprop'
+            differential_comparison_test(file_name, test, dataset, cfg)
+            #perform_tests(mode, clean_tables_path, fraccon_tab_prefix,
+            #              metadatadf, confidic, args)
+
+    # # 1- abund
+    # if args.abundances:
+    #     print("processing abundances")
+    #     mode = "abund"
+    #     abund_tab_prefix = confidic['name_abundance']
+    #     perform_tests(mode, clean_tables_path, abund_tab_prefix,
+    #                   metadatadf, confidic, args)
+    #
+    # # 2- ME or FC
+    # if args.meanEnrich_or_fracContrib:
+    #     print("processing mean enrichment or fractional contributions")
+    #     mode = "mefc"
+    #     fraccon_tab_prefix = confidic['name_meanE_or_fracContrib']
+    #     perform_tests(mode, clean_tables_path, fraccon_tab_prefix,
+    #                   metadatadf, confidic, args)
+    #
+    # # 3- isotopologues
+    # if args.isotopologues:
+    #     mode = "isoabsol"
+    #     isos_abs_tab_prefix = confidic['name_isotopologue_abs']
+    #     isos_prop_tab_prefix = confidic['name_isotopologue_prop']
+    #     if (isos_abs_tab_prefix is not np.nan) and \
+    #             (isos_abs_tab_prefix != "None") and \
+    #             (isos_abs_tab_prefix is not None):
+    #         print("processing absolute isotopologues")
+    #         perform_tests(mode, clean_tables_path, isos_abs_tab_prefix,
+    #                       metadatadf, confidic, args)
+    #     else:
+    #         print("processing isotopologues (values given as proportions)")
+    #         mode = "isoprop"
+    #         perform_tests(mode, clean_tables_path, isos_prop_tab_prefix,
+    #                       metadatadf, confidic, args)
+
+#    print("end")

@@ -1,23 +1,31 @@
-# -----------------------------
-# differential analysis
-# -----------------------------
+_target_: method.DifferentialAnalysisConfig
 
-# grouping:
-#   * the category we pick for comparison (here timepoint)
-#   * or, a combination of 2 metadata categories at choice (see toy 2)
+label: differential analysis
+name: indentify differences
 
 grouping :
+  - condition
   - timepoint
 
+comparison_mode : pairwise
+
 comparisons :
-  - [T24, T0]  # for each pair, last must be control
+  - [L-Cycloserine_T0, Control_T0]
+  - [L-Cycloserine_T2h, Control_T2h]
 
 statistical_test:
-  abundances: prm-scipy
-  meanE_or_fracContrib: KW
-  isotopologue_abs: ranksum
-  isotopologue_prop: null
+  abundances_file_name: prm-scipy
+  meanE_or_fracContrib_file_name: KW
+  isotopologue_abs_file_name: ""
+  isotopologue_prop_file_name: ""
+
+impute_values:
+  abundances_file_name: "min"
+  meanE_or_fracContrib_file_name: "min/2"
+  isotopologue_abs_file_name: ""
+  isotopologue_prop_file_name: ""
 
 thresholds:
-  padj: 0.2
-  absolute_log2FC: 3
+  padj_threshold: 0.2
+  absolute_log2FC_threshold: 3
+

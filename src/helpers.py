@@ -16,6 +16,89 @@ import re
 
 import constants
 
+def zero_repl_arg(zero_repl_arg: str) -> None:
+    '''
+     zero_repl_arg is a string representing the argument for replacing zero values (e.g. "min/2").
+     The result is a dictionary of replacement arguments.
+    '''
+    zero_repl_arg = zero_repl_arg.lower()
+    err_msg = 'replace_zero_with argument is not correctly formatted'
+    if zero_repl_arg.startswith("min"):
+        if zero_repl_arg == "min":
+            n = int(1)  # n is the denominator, default is 1
+        else:
+            try:
+                n = float(str(zero_repl_arg.split("/")[1]))
+            except Exception as e:
+                print(e)
+                raise ValueError(err_msg)
+
+        def foo(x, n):
+            return min(x)/n
+
+    else:
+        try:
+            n = float(str(zero_repl_arg))
+        except Exception as e:
+            print(e)
+            raise ValueError(err_msg)
+
+        def foo(x, n):
+            return n
+
+    return {'repZero': foo, 'n': n}
+
+def arg_repl_zero2value(argum_zero_rep: str, df: pd.DataFrame) -> float:
+    '''
+    Applies the repZero function to the DataFrame df where the values are greater than 0.
+    This filters df to include only values greater than 0 and applies the repZero function element-wise.
+    WARNING: only authorised values are (min | min/n | VALUE) (default: min)
+    '''
+    repZero = argum_zero_rep['repZero']
+    n = argum_zero_rep['n']
+    replacement = repZero(df[df > 0].apply(repZero, n=1), n=n)
+    return replacement
+
+
+def overlap_symmetric(x: np.array, y: np.array) -> int:
+    a = [np.nanmin(x), np.nanmax(x)]
+    b = [np.nanmin(y), np.nanmax(y)]
+
+    a = np.asarray(a, dtype=np.float64)
+    b = np.asarray(b, dtype=np.float64)
+
+    overlap = np.nanmax([a[0], b[0]]) - np.nanmin([a[1], b[1]])
+    return overlap
+
+
+def overlap_asymmetric(x: np.array, y: np.array) -> int:
+    # x is the reference group
+    overlap = np.nanmin(y) - np.nanmax(x)
+    return overlap
+
+def compute_distance_between_intervals(df: pd.DataFrame, group1, group2,
+                                       overlap_method: str) -> pd.DataFrame:
+    """
+        For each row in the input DataFrame, computes the distance between intervals
+        provided as 2 groups of columns in the input dataframe
+
+        Returns:
+             DataFrame with an additional column containing computed distances.
+    """
+
+    for i in df.index.values:
+        group1_values = np.array(group1.iloc[i])
+        group2_values = np.array(group2.iloc[i])
+
+        if overlap_method == "symmetric":
+            df.loc[i, 'distance'] = overlap_symmetric(group1_values,
+                                                      group2_values)
+        else:
+            df.loc[i, 'distance'] = overlap_asymmetric(group1_values,
+                                                       group2_values)
+
+    return df
+
 def df_to_dict_by_compartment(df: pd.DataFrame, metadata: pd.DataFrame) -> dict:
     '''
     splits df into a dictionary of dataframes, each for one compartment
@@ -26,27 +109,6 @@ def df_to_dict_by_compartment(df: pd.DataFrame, metadata: pd.DataFrame) -> dict:
         df_co = df.loc[:, metada_co['original_name']]
         output_dict[compartment] = df_co
     return output_dict
-
-def open_config_file(config_file):
-    """
-        Opens and loads a YAML configuration file.
-        Returns: Loaded configuration dictionary.
-        """
-    try:
-        with open(config_file, "r") as f:
-            config_dic = yaml.load(f, Loader=yaml.Loader)
-    except yaml.YAMLError as yam_err:
-        print(yam_err)
-        config_dic = None
-    except Exception as e:
-        print(e)
-        config_dic = None
-
-    if config_dic is None:
-        raise ValueError("\nimpossible to read the configuration file")
-
-    return config_dic
-
 
 def check_dict_has_keys(d: dict, expected_keys: list) -> np.array:
     has_key = []
@@ -149,7 +211,7 @@ def isotopologues_meaning_df(isotopologues_full_list):
     return df
 
 
-def prepare4contrast(idf, ametadata, grouping: list, contrast: list):
+def prepare4contrast(df: DataFrame, ametadata, grouping: list, contrast: list):
     """
     grouping,  example :  ['condition', 'timepoint' ]
           if (for a sample)  condition = "treatment" and  timepoint = "t12h",
@@ -165,7 +227,7 @@ def prepare4contrast(idf, ametadata, grouping: list, contrast: list):
     else:
         cc = cc.assign(newcol=cc[grouping])
     metas = cc.loc[cc["newcol"].isin(contrast), :]
-    newdf = idf[metas['name_to_plot']]
+    newdf = df[metas['name_to_plot']]
     return newdf, metas
 
 

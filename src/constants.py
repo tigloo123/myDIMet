@@ -5,4 +5,22 @@
 """
 
 data_files_keys = ['abundance_file_name', 'meanE_or_fracContrib_file_name',
-                  'isotopologue_prop_file_name', 'isotopologue_abs_file_name']
+                   'isotopologue_prop_file_name', 'isotopologue_abs_file_name']
+
+data_files_keys_type = Literal['abundance_file_name', 'meanE_or_fracContrib_file_name',
+                                'isotopologue_prop_file_name', 'isotopologue_abs_file_name']
+
+
+availtest_methods = ['MW', 'KW', 'ranksum', 'Wcox', 'Tt', 'BrMu',
+                     'prm-scipy', 'disfit', 'none']
+
+availtest_methods_type = Literal['MW', 'KW', 'ranksum', 'Wcox', 'Tt', 'BrMu',
+                                'prm-scipy', 'disfit', 'none']
+
+correction_methods = ['bonferroni', 'sidak', 'holm-sidak', 'holm',
+                      'simes-hochberg', 'hommel', 'fdr_bh', 'fdr_by',
+                      'fdr_tsbh', 'fdr_tsbky']
+
+comparison_modes = ["paiwise", "multigroup"]
+
+comparison_modes_types = Literal["paiwise", "multigroup"]

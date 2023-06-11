@@ -19,23 +19,7 @@ metabolites_to_plot:
          L-Lactic_acid, Pyruvic_acid, L-Malic_acid,
          Fumaric_acid, L-Alanine, L-Glutamic_acid,
          L-Glutamine, L-Aspartic_acid]
-  med:  [L-Lactic_acid, Pyruvic_acid,
-           L-Alanine, L-Asparagine]
-
-# Abundances bars configuration
-# -----------------------------
-conditions :
- - Control
- - L-Cycloserine
-
-time_sel :
-  - T0
-  - T2h
-barcolor : timepoint
-axisx : condition
-axisx_labeltilt : 20 # 0 is no tilt
-width_each_subfig : 3
-wspace_subfigs : 1
+  med:  [L-Lactic_acid, Pyruvic_acid, L-Alanine, L-Asparagine]
 
 # Isotopologue Contribution plot configuration
 # -----------------------------
@@ -43,33 +27,9 @@ width_each_stack : !!float 3
 wspace_stacks : !!float 1.1
 numbers_size : 13
 
-
 # Fractional Contributions lineplot configuration
 # -----------------------------
 # will run with defaults, see --help
-
-
-# -----------------------------
-# differential analysis
-# -----------------------------
-grouping :  # see explanation at the  end
-  - condition
-  - timepoint
-
-comparisons :   # for each pair,last must be control
-  - [L-Cycloserine_T0, Control_T0]
-  - [L-Cycloserine_T2h, Control_T2h]
-
-statistical_test:
-  abundances: prm-scipy
-  meanE_or_fracContrib: KW
-  isotopologue_abs: null
-  isotopologue_prop: KW
-
-thresholds:
-  padj: 1
-  absolute_log2FC: 0.3
-
 
 # grouping: column that is a combination of 2 metadata categories,
 # new category thus generated, is ready for comparison. Example :

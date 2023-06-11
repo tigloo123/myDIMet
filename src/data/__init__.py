@@ -79,7 +79,7 @@ class Dataset(BaseModel):
         logger.info("Finished loading raw dataset %s, available dataframes are : %s",
                     self.config.label, self.available_datasets)
 
-    def load_abundance_compartment_data(self, suffix) -> pd.DataFrame:
+    def load_compartmentalized_data(self, suffix) -> pd.DataFrame:
         compartments = self.metadata_df['short_comp'].unique().tolist()
         table_prefix = self.config.abundance_file_name
         for c in compartments:

@@ -12,7 +12,6 @@ from data import make_dataset
 
 logger = logging.getLogger(__name__)
 
-
 @hydra.main(config_path="../config", config_name="config", version_base=None)
 def main_run_analysis(cfg: DictConfig) -> None:
     logger.info(f"The current working directory is {os.getcwd()}")
