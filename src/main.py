@@ -7,6 +7,7 @@ import logging
 
 from data import Dataset, DatasetConfig
 from dbs import PostgreSQLConnection
+from method import Method
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,8 @@ def func(cfg: DictConfig):
     connection.connect()
     dataset: Dataset = Dataset(config=hydra.utils.instantiate(cfg.analysis.dataset))
     dataset.preload()
+    method: Method = hydra.utils.instantiate(cfg.analysis.method).build()
+    method.plot()
 
 
 if __name__ == "__main__":

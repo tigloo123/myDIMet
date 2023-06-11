@@ -31,7 +31,8 @@ class DatasetConfig(BaseModel):
     name_meanE_or_fracContrib: str = "MeanEnrichment13C"
     name_isotopologue_prop: str = "IsotopologuesProp"  # isotopologue proportions
     name_isotopologue_abs: str = "IsotopologuesAbs"  # isotopologue absolute values
-
+    def build(self) -> "Dataset":
+        return Dataset(config=self)
 
 class Dataset(BaseModel):
     config: DatasetConfig

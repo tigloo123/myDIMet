@@ -1,0 +1,5 @@
+# Isotopologue Contribution plot configuration
+# -----------------------------
+width_each_stack : !!float 3
+wspace_stacks : !!float 1.1
+numbers_size : 13

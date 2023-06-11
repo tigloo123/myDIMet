@@ -1,0 +1,23 @@
+# -----------------------------
+# differential analysis
+# -----------------------------
+
+# grouping:
+#   * the category we pick for comparison (here timepoint)
+#   * or, a combination of 2 metadata categories at choice (see toy 2)
+
+grouping :
+  - timepoint
+
+comparisons :
+  - [T24, T0]  # for each pair, last must be control
+
+statistical_test:
+  abundances: prm-scipy
+  meanE_or_fracContrib: KW
+  isotopologue_abs: ranksum
+  isotopologue_prop: null
+
+thresholds:
+  padj: 0.2
+  absolute_log2FC: 3

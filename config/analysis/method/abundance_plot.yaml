@@ -1,3 +1,5 @@
+_target_: method.AbundancePlotConfig
+
 label: abundance plot
 name: Generate abundance plots
 
