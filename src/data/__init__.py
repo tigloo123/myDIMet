@@ -4,14 +4,7 @@ from pathlib import Path
 from typing import Optional, List, Literal, Set, Dict
 
 import pandas as pd
-
-from pydantic.dataclasses import dataclass
-from pydantic import validator
-
 from pydantic import BaseModel as PydanticBaseModel
-
-import helpers
-
 
 class BaseModel(PydanticBaseModel):
     class Config:
@@ -83,14 +76,15 @@ class Dataset(BaseModel):
 
         # log the first 5 rows of the metadata
         logger.info("Loaded metadata: \n%s", self.metadata_df.head())
-        logger.info("Finished loading raw dataset %s, available dataframes are : %s", self.config.label, self.available_datasets)
+        logger.info("Finished loading raw dataset %s, available dataframes are : %s",
+                    self.config.label, self.available_datasets)
 
     def load_abundance_compartment_data(self, suffix) -> pd.DataFrame:
         compartments = self.metadata_df['short_comp'].unique().tolist()
         table_prefix = self.config.abundance_file_name
-        the_folder = self.processed_data_folder
         for c in compartments:
             fn = f'{table_prefix}--{c}--{suffix}.tsv'
-            self.compartmentalized_dfs[c] = pd.read_csv(os.path.join(self.processed_data_folder, fn), sep='\t', header=0, index_col=0)
+            self.compartmentalized_dfs[c] = pd.read_csv(os.path.join(self.processed_data_folder, fn),
+                                                        sep='\t', header=0, index_col=0)
             logger.info("Loaded compartmentalized DF for %s", c)
 
