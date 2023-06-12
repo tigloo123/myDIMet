@@ -139,6 +139,7 @@ def check_validity_configfile_diff2group(confidic: dict,
 
     return True
 
+
 def flag_has_replicates(ratiosdf: pd.DataFrame):
     bool_results = list()
     tuples_list = ratiosdf['count_nan_samples'].tolist()
@@ -182,6 +183,7 @@ def compute_span_incomparison(df: pd.DataFrame, groups: List) -> pd.DataFrame:
     #
     # return df
 
+
 def calc_reduction(df, metad4c):
     def renaming_original_col_sams(df):
         newcols = ["input_" + i for i in df.columns]
@@ -203,9 +205,9 @@ def calc_reduction(df, metad4c):
 
 def calc_ratios(df4c: pd.DataFrame, groups: List) -> pd.DataFrame:
     df4c = helpers.calculate_gmean(df4c, groups)
-   # df4c, col_g_interest, col_g_control = helpers.give_geommeans_new(
-   #     df4c, metad4c, 'newcol', c_interest, c_control)
-    #df4c = helpers.give_ratios_df(df4c, col_g_interest, col_g_control)
+    # df4c, col_g_interest, col_g_control = helpers.give_geommeans_new(
+    #     df4c, metad4c, 'newcol', c_interest, c_control)
+    # df4c = helpers.give_ratios_df(df4c, col_g_interest, col_g_control)
 
     return df4c
 
@@ -249,8 +251,8 @@ def select_rows_with_sufficient_non_nan_values(df: pd.DataFrame) -> (pd.DataFram
         bad_df = df[(df['count_nan_samples_group1'] > 0) | (df['count_nan_samples_group2'] > 0)]
         good_df = df[(df['count_nan_samples_group1'] == 0) & (df['count_nan_samples_group2'] == 0)]
         # removed the side effect
-        #good_df = good_df.drop(columns=['count_nan_samples_group1', 'count_nan_samples_group2'])
-        #bad_df = bad_df.drop(columns=['count_nan_samples_group1', 'count_nan_samples_group2'])
+        # good_df = good_df.drop(columns=['count_nan_samples_group1', 'count_nan_samples_group2'])
+        # bad_df = bad_df.drop(columns=['count_nan_samples_group1', 'count_nan_samples_group2'])
     except Exception as e:
         print(e)
         print("Error in separate_before_stats (enough replicates ?)")
@@ -400,8 +402,8 @@ def statistic_absolute_geommean_diff(b_values: np.array, a_values: np.array):
     return diff_absolute
 
 
-def run_statistical_test(df: pd.DataFrame, dataset: Dataset, cfg: Config,
-                         comparison: List, test: str): #redu_df, metas, contrast, whichtest):
+def run_statistical_test(df: pd.DataFrame, dataset: Dataset, cfg: DictConfig,
+                         comparison: List, test: str):  # redu_df, metas, contrast, whichtest):
     """
     This is a switch function for running a pairwise differential analysis statistical test
     """
@@ -411,7 +413,7 @@ def run_statistical_test(df: pd.DataFrame, dataset: Dataset, cfg: Config,
         vInterest = ~np.isnan(np.array(df.loc[i, comparison[0]], dtype=float))
         vBaseline = ~np.isnan(np.array(df.loc[i, comparison[1]], dtype=float))
 
-        if (len(vInterest) < 2) | (len(vBaseline)  < 2):
+        if (len(vInterest) < 2) | (len(vBaseline) < 2):
             return pd.DataFrame(data={"metabolite": metabolites,
                                       "stat": [float('nan')] * len(metabolites),
                                       "pvalue": [float('nan')] * len(metabolites)})
@@ -458,11 +460,11 @@ def run_statistical_test(df: pd.DataFrame, dataset: Dataset, cfg: Config,
         stare.append(stat_result)
         pval.append(pval_result)
 
-    assert(len(metabolites) == len(stare))
-    assert(len(metabolites) == len(pval))
+    assert (len(metabolites) == len(stare))
+    assert (len(metabolites) == len(pval))
     return pd.DataFrame(data={"metabolite": metabolites,
-                                  "stat": stare,
-                                  "pvalue": pval})
+                              "stat": stare,
+                              "pvalue": pval})
 
 
 def steps_fitting_method(ratiosdf, out_histo_file):
@@ -470,7 +472,7 @@ def steps_fitting_method(ratiosdf, out_histo_file):
         min_pval_ = list()
         for tail_way in ["two-sided", "right-tailed"]:
             tmp = fit_statistical_distribution.compute_p_value(good_df, tail_way,
-                                                                best_distribution, args_param)
+                                                               best_distribution, args_param)
 
             min_pval_.append(tuple([tail_way, tmp["pvalue"].min()]))
 
@@ -478,8 +480,8 @@ def steps_fitting_method(ratiosdf, out_histo_file):
 
     ratiosdf = fit_statistical_distribution.compute_z_score(ratiosdf)
     best_distribution, args_param = fit_statistical_distribution.find_best_distribution(
-                                    ratiosdf,
-                                    out_histogram_distribution=out_histo_file)
+        ratiosdf,
+        out_histogram_distribution=out_histo_file)
     autoset_tailway = auto_detect_tailway(ratiosdf,
                                           best_distribution, args_param)
     print("auto, best pvalues calculated :", autoset_tailway)
@@ -507,6 +509,7 @@ def compute_padj_version2(df, correction_alpha, correction_method):
     df = df.assign(padj=truepadj)
 
     return df
+
 
 def filter_diff_results(ratiosdf, padj_cutoff, log2FC_abs_cutoff):
     ratiosdf['abslfc'] = ratiosdf['log2FC'].abs()
@@ -554,15 +557,14 @@ def reorder_columns_diff_end(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-
 def pairwise_comparison(df: pd.DataFrame, dataset: Dataset, cfg: DictConfig,
                         comparison: List[str], test: availtest_methods_type) -> pd.DataFrame:
     '''
     Runs a pairwise comparison according to the comparison list in the analysis yaml file
     '''
     conditions_list = helpers.select_rows_by_fixed_values(df=dataset.metadata_df,
-                                                    columns=cfg.analysis.method.grouping,
-                                                    values=comparison)
+                                                          columns=cfg.analysis.method.grouping,
+                                                          values=comparison)
     # flatten the list of lists and select the subset of column names present in the sub dataframe
     columns = [i for i in reduce(operator.concat, conditions_list) if i in df.columns]
     this_comparison = [list(filter(lambda x: x in columns, sublist)) for sublist in conditions_list]
@@ -582,28 +584,26 @@ def pairwise_comparison(df: pd.DataFrame, dataset: Dataset, cfg: DictConfig,
         df_good = steps_fitting_method(df_good, dataset, cfg)
     else:
         result_test_df = run_statistical_test(df_good, dataset, cfg, this_comparison, test)
-        assert(result_test_df.shape[0] == df_good.shape[0])
+        assert (result_test_df.shape[0] == df_good.shape[0])
         result_test_df.set_index("metabolite", inplace=True)
         df_good = pd.merge(df_good, result_test_df,
-                            left_index=True, right_index=True)
+                           left_index=True, right_index=True)
 
-    df_good["log2FC"] = np.log2(df_good['gmean_ratio']) # was "FC"
+    df_good["log2FC"] = np.log2(df_good['gmean_ratio'])  # was "FC"
 
     df_good, df_no_padj = helpers.split_rows_by_threshold(df_good, 'distance/span',
-                                                            cfg.analysis.method.qualityDistanceOverSpan)
+                                                          cfg.analysis.method.qualityDistanceOverSpan)
     df_good = compute_padj_version2(df_good, 0.05,
-                                     cfg.analysis.method.correction_method)
+                                    cfg.analysis.method.correction_method)
 
     # re-integrate the "bad" sub-dataframes to the full dataframe
     result = helpers.concatenate_dataframes(df_good, df_bad, df_no_padj)
     return result
 
 
-
 def run_multiclass(measurements: pd.DataFrame, metadatadf: pd.DataFrame,
                    out_file_elements: dict, confidic,
                    method_multiclass, args) -> None:
-
     out_dir = out_file_elements['odir']
     prefix = out_file_elements['prefix']
     co = out_file_elements['co']
@@ -626,8 +626,8 @@ def run_multiclass(measurements: pd.DataFrame, metadatadf: pd.DataFrame,
             the_dictionary_of_arrays = create_dictio_arrays(row, metadata)
             # using kruskal on three or more groups
             stat_result, pval_result = scipy.stats.kruskal(
-               *the_dictionary_of_arrays.values(), axis=0,
-               nan_policy='omit')
+                *the_dictionary_of_arrays.values(), axis=0,
+                nan_policy='omit')
             df.at[i, 'statistic'] = stat_result
             df.at[i, 'pvalue'] = pval_result
         return df
@@ -642,7 +642,7 @@ def run_multiclass(measurements: pd.DataFrame, metadatadf: pd.DataFrame,
         measures_tp = calc_reduction(measures_tp, metada_tp)
 
         if method_multiclass == "KW":
-            multi_result = compute_multiclass_KW(measures_tp,  metada_tp)
+            multi_result = compute_multiclass_KW(measures_tp, metada_tp)
 
         multi_result = compute_padj_version2(
             multi_result, 0.05, args.multitest_correction)
@@ -689,8 +689,8 @@ def run_time_course(measurements: pd.DataFrame,
         ordered_timenum = metada_cd['timenum'].unique()  # already is numpy
         ordered_timenum = np.sort(np.array(ordered_timenum))
 
-        for h in range(len(ordered_timenum)-1):
-            contrast = [str(ordered_timenum[h+1]), str(ordered_timenum[h])]
+        for h in range(len(ordered_timenum) - 1):
+            contrast = [str(ordered_timenum[h + 1]), str(ordered_timenum[h])]
             auto_set_comparisons_l.append(contrast)
 
         for contrast in auto_set_comparisons_l:
@@ -698,7 +698,7 @@ def run_time_course(measurements: pd.DataFrame,
             metada_cd = metada_cd.assign(
                 timenum=metada_cd["timenum"].astype('str'))
             df4c, metad4c = helpers.prepare4contrast(measurements, metada_cd,
-                                                ['timenum'], contrast)
+                                                     ['timenum'], contrast)
 
             df4c = df4c[(df4c.T != 0).any()]  # delete rows being zero every
             df4c = df4c.dropna(axis=0, how='all')
@@ -760,12 +760,11 @@ def run_time_course(measurements: pd.DataFrame,
 def multiclass_andor_timecourse_andor_diff2groups(
         measurements, meta_co, out_file_elems,
         confidic, modes_specs, mode, args):
-
     method_multiclass = args.multiclass_analysis
     if method_multiclass and method_multiclass.lower() != "none":
         out_file_elems['odir'] = confidic['out_path'] + \
                                  "results/multiclass_analysis/" + \
-                                 out_file_elems['modedir']+'/'
+                                 out_file_elems['modedir'] + '/'
 
         helpers.detect_and_create_dir(f"{out_file_elems['odir']}/extended/")
         helpers.detect_and_create_dir(f"{out_file_elems['odir']}/filtered/")
@@ -800,7 +799,7 @@ def multiclass_andor_timecourse_andor_diff2groups(
 
 
 def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, cfg: DictConfig,
-                            test: availtest_methods_type) -> None:
+                            test: availtest_methods_type, out_table_dir: str) -> None:
     '''
     Differential comparison is performed on compartemnatalized versions of data files
     Moreover, we replace zero values using the provided method
@@ -809,9 +808,9 @@ def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, c
     assert_literal(file_name, data_files_keys_type)
 
     impute_value = cfg.analysis.method.impute_values[file_name]
-    for compartment, compartemantalized_df in dataset.compartmentalized_dfs[file_name].items():
-        val_instead_zero = helpers.arg_repl_zero2value(impute_value, compartemantalized_df)
-        df = compartemantalized_df.replace(to_replace=0, value=val_instead_zero)
+    for compartment, compartmentalized_df in dataset.compartmentalized_dfs[file_name].items():
+        val_instead_zero = helpers.arg_repl_zero2value(impute_value, compartmentalized_df)
+        df = compartmentalized_df.replace(to_replace=0, value=val_instead_zero)
 
         for comparison in cfg.analysis.method.comparisons:
             if cfg.analysis.method.comparison_mode == 'pairwise':
@@ -819,26 +818,27 @@ def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, c
                 result["compartment"] = compartment
                 result = reorder_columns_diff_end(result)
                 result = result.sort_values(['padj', 'distance/span'],
-                                             ascending=[True, False])
-                otsv = f"{prefix}--{co}--{suffix}-{strcontrast}-{whichtest}.tsv"
+                                            ascending=[True, False])
+                strcontrast = "-".join(map(lambda x: "-".join(x), comparison))
+                base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}--{cfg.analysis.dataset.suffix}-{strcontrast}_{test}"
                 result.to_csv(
-                    f"{out_dir}/extended/{otsv}",
+                    os.path.join(out_table_dir, f"{base_file_name}.tsv"),
                     index_label="metabolite", header=True, sep='\t')
                 # filtered by thresholds :
                 filtered_df = filter_diff_results(
                     result,
-                    confidic['thresholds']['padj'],
-                    confidic['thresholds']['absolute_log2FC'])
-                otv = f'{prefix}--{co}--{suffix}-{strcontrast}-{whichtest}_filter.tsv'
-                filtered_df.to_csv(f"{out_dir}/filtered/{otv}",
+                    cfg.analyses.method.thresholds.padj,
+                    cfg.analyses.method.thresholds.absolute_log2FC)
+                filtered_df.to_csv(os.path.join(out_table_dir, f"{base_file_name}_filter.tsv"),
                                    index_label="metabolite",
                                    header=True, sep='\t')
+
 
 def pass_confidic_timecourse_multiclass_to_arg(confidic, args):
     if (args.time_course != 'none') and ('time_course' in confidic.keys()):
         raise ValueError("not allowed to set time_course twice: in .yml file"
                          "and arg")
-    if (args.multiclass_analysis != 'none') and\
+    if (args.multiclass_analysis != 'none') and \
             ('multiclass_analysis' in confidic.keys()):
         raise ValueError("not allowed to set multiclass_analysis "
                          "twice: .yml file and arg")

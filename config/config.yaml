@@ -9,8 +9,8 @@ defaults:
   - analysis: example_diff_abundance_plot
   - _self_
 
-data_path: "/Users/macha/Projects/myDIMet/data/example_diff"
 figure_path: figures
+table_path : tables
 suffix : cyc1
 
 ## metabolites to plot:

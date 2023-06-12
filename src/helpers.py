@@ -7,10 +7,11 @@
 import os
 from typing import Dict, List
 
+from omegaconf import DictConfig
+
 import constants
 import numpy as np
 import pandas as pd
-from botocore.config import Config
 from scipy import stats
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -299,7 +300,7 @@ def isotopologues_meaning_df(isotopologues_full_list):
 import pandas as pd
 
 
-def prepare4contrast(df: pd.DataFrame, cfg: Config):
+def prepare4contrast(df: pd.DataFrame, cfg: DictConfig):
     """
     grouping,  example :  ['condition', 'timepoint' ]
           if (for a sample)  condition = "treatment" and  timepoint = "t12h",

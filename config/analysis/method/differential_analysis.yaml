@@ -28,5 +28,5 @@ impute_values:
   isotopologue_prop_file_name: ""
 
 thresholds:
-  padj_threshold: 0.2
-  absolute_log2FC_threshold: 3
+  padj: 0.2
+  absolute_log2FC: 3

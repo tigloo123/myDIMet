@@ -49,11 +49,14 @@ class DifferentialAnalysisConfig(MethodConfig):
     '''
     Sets default values or fills them from the method yaml file
     '''
-    grouping: ListConfig = ["condition", "timepoint"]
+    comparison_mode:str
     comparisons: ListConfig = [["Control", "Condition"]]  # for each pair, last must be control
+    correction_method:str
+    grouping: ListConfig = ["condition", "timepoint"]
+    impute_values : Dict[str, Optional[str]]
+    qualityDistanceOverSpan:float
     statistical_test : Dict[str, Optional[str]]
-    padj_threshold: float = 0.2
-    absolute_log2FC_threshold: float = 3
+    thresholds : Dict[str, Optional[float]]
     def build(self) -> "DifferentialAnalysis":
         return DifferentialAnalysis(config=self)
 
@@ -76,7 +79,7 @@ class AbundancePlot(Method):
         dataset.load_compartmentalized_data(suffix=cfg.suffix)
         abundances_file_name = cfg.analysis.dataset.abundances_file_name
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
-        os.mkdir(out_plot_dir)
+        os.makedirs(out_plot_dir,exist_ok=True)
         run_steps_abund_bars(
             abundances_file_name,
             dataset,
@@ -90,11 +93,12 @@ class DifferentialAnalysis(Method):
         logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
         logger.info("Will perform differential analysis, with the following config: %s", self.config)
         dataset.load_compartmentalized_data(suffix=cfg.suffix)
+        out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
+        os.makedirs(out_table_dir, exist_ok=True)
 
         for file_name, test in self.config.statistical_test.items():
             if test is None : continue
             logger.info(f"Running differential analysis on {file_name} using {test} test")
-            differential_comparison(file_name, dataset, cfg, test)
+            differential_comparison(file_name, dataset, cfg, test,out_table_dir=out_table_dir)
             #perform_tests(mode, clean_tables_path, fraccon_tab_prefix,
             #              metadatadf, confidic, args)
-

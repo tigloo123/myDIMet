@@ -6,6 +6,7 @@ from typing import Optional, List, Literal, Set, Dict
 import pandas as pd
 from pydantic import BaseModel as PydanticBaseModel
 
+
 class BaseModel(PydanticBaseModel):
     class Config:
         arbitrary_types_allowed = True
@@ -42,7 +43,7 @@ class Dataset(BaseModel):
     isotopologue_prop_df: Optional[pd.DataFrame] = None
     isotopologue_abs_df: Optional[pd.DataFrame] = None
     available_datasets: Set[Literal["metadata", "abundance", "meanE_or_fracContrib", "isotopologue_prop", "isotopologue_abs"]] = set()
-    compartmentalized_dfs: Dict[str, Dict[str,pd.DataFrame]] = {}
+    compartmentalized_dfs: Dict[str, Dict[str, pd.DataFrame]] = {}
 
     def preload(self):
         # check if we have a relative or absolute path, compute the absolute path then load the data using pandas
@@ -83,7 +84,7 @@ class Dataset(BaseModel):
         compartments = self.metadata_df['short_comp'].unique().tolist()
         for c in compartments:
             file_paths = [
-                ("abundances_file_name", os.path.join(self.processed_data_folder,f'{self.config.abundances_file_name}--{c}--{suffix}.tsv')),
+                ("abundances_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundances_file_name}--{c}--{suffix}.tsv')),
                 ("meanE_or_fracContrib_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundances_file_name}--{c}--{suffix}.tsv')),
                 ("isotopologue_prop_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundances_file_name}--{c}--{suffix}.tsv')),
                 ("isotopologue_abs_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundances_file_name}--{c}--{suffix}.tsv'))
@@ -94,3 +95,15 @@ class Dataset(BaseModel):
                     self.compartmentalized_dfs[label] = {}
                 self.compartmentalized_dfs[label][c] = pd.read_csv(fp, sep='\t', header=0, index_col=0)
                 logger.info("Loaded compartmentalized %s DF for %s", label, c)
+
+    def get_file_for_label(self, label):
+        if label == "abundances_file_name":
+            return self.config.abundances_file_name
+        elif label == "meanE_or_fracContrib_file_name":
+            return self.config.meanE_or_fracContrib_file_name
+        elif label == "isotopologue_prop_file_name":
+            return self.config.isotopologue_prop_file_name
+        elif label == "isotopologue_abs_file_name":
+            return self.config.isotopologue_abs_file_name
+        else:
+            raise ValueError(f"Unknown label {label}")
