@@ -9,10 +9,10 @@ from typing import Literal, get_args
 def assert_literal(value:str,lit_type):
     assert value in get_args(lit_type)
 
-data_files_keys = ['abundance_file_name', 'meanE_or_fracContrib_file_name',
+data_files_keys = ['abundances_file_name', 'meanE_or_fracContrib_file_name',
                    'isotopologue_prop_file_name', 'isotopologue_abs_file_name']
 
-data_files_keys_type = Literal['abundance_file_name', 'meanE_or_fracContrib_file_name',
+data_files_keys_type = Literal['abundances_file_name', 'meanE_or_fracContrib_file_name',
                                 'isotopologue_prop_file_name', 'isotopologue_abs_file_name']
 
 
@@ -29,3 +29,7 @@ correction_methods = ['bonferroni', 'sidak', 'holm-sidak', 'holm',
 comparison_modes = ["paiwise", "multigroup"]
 
 comparison_modes_types = Literal["paiwise", "multigroup"]
+
+overlap_methods = ["symmetric", "asymmetric"]
+
+overlap_methods_types = Literal["symmetric", "asymmetric"]

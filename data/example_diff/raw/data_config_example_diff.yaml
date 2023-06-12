@@ -3,7 +3,7 @@
 #
 
 metadata_file_name : metadata.csv
-abundance_file_name : rawAbundances
+abundances_file_name : rawAbundances
 meanE_or_fracContrib_file_name : FracContribution_C
 isotopologue_prop_file_name : CorrectedIsotopologues # isotopologue proportions
 isotopologue_abs_file_name : null  # isotopologue absolute values (for toy2 not avail)

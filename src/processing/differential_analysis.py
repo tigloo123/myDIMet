@@ -6,16 +6,19 @@
 
 import argparse
 import os
+from typing import List
 
 import numpy as np
 import pandas as pd
 import scipy.stats
 import statsmodels.stats.multitest as ssm
 from botocore.config import Config
+from functools import reduce
+import operator
 
 from constants import availtest_methods, correction_methods, availtest_methods_type, assert_literal, \
     data_files_keys_type
-import fit_statistical_distribution
+from processing import fit_statistical_distribution
 
 import helpers
 from data import Dataset
@@ -152,17 +155,32 @@ def flag_has_replicates(ratiosdf: pd.DataFrame):
     return bool_results
 
 
-def compute_span_incomparison(df: pd.DataFrame, metadata: pd.DataFrame,
-                              contrast: list):
-    expected_samples = metadata.loc[metadata['newcol'].isin(contrast),
-                                    'name_to_plot']
-    selcols_df = df[expected_samples].copy()
+def compute_span_incomparison(df: pd.DataFrame, groups: List) -> pd.DataFrame:
+    """
+    For each row in the input DataFrame, computes the difference between the maximum and minimum values
+    from columns in two sublists provided in the 'groups' list.
+    Returns:
+         DataFrame with an additional 'span_allsamples' column containing the computed differences.
+    """
     for i in df.index.values:
-        values_this_comparison = selcols_df.loc[i, :].to_numpy()
-        span = values_this_comparison.max() - values_this_comparison.min()
-        df.loc[i, 'span_allsamples'] = span
+        group1 = df.loc[i, groups[0]]
+        group2 = df.loc[i, groups[1]]
+
+        interval = max(group1) - min(group2)
+        df.loc[i, 'span_allsamples'] = interval
 
     return df
+    #
+    #
+    # expected_samples = metadata.loc[metadata['newcol'].isin(contrast),
+    #                                 'name_to_plot']
+    # selcols_df = df[expected_samples].copy()
+    # for i in df.index.values:
+    #     values_this_comparison = selcols_df.loc[i, :].to_numpy()
+    #     span = values_this_comparison.max() - values_this_comparison.min()
+    #     df.loc[i, 'span_allsamples'] = span
+    #
+    # return df
 
 def calc_reduction(df, metad4c):
     def renaming_original_col_sams(df):
@@ -183,13 +201,11 @@ def calc_reduction(df, metad4c):
     return df4c
 
 
-def calc_ratios(df4c, metad4c, selected_contrast):
-    c_interest = selected_contrast[0]  # columns names interest
-    c_control = selected_contrast[1]  # columns names control
-
-    df4c, col_g_interest, col_g_control = helpers.give_geommeans_new(
-        df4c, metad4c, 'newcol', c_interest, c_control)
-    df4c = helpers.give_ratios_df(df4c, col_g_interest, col_g_control)
+def calc_ratios(df4c: pd.DataFrame, groups: List) -> pd.DataFrame:
+    df4c = helpers.calculate_gmean(df4c, groups)
+   # df4c, col_g_interest, col_g_control = helpers.give_geommeans_new(
+   #     df4c, metad4c, 'newcol', c_interest, c_control)
+    #df4c = helpers.give_ratios_df(df4c, col_g_interest, col_g_control)
 
     return df4c
 
@@ -207,19 +223,32 @@ def divide_groups(df4c, metad4c, selected_contrast):
     return group_interest, group_control
 
 
-def distance_or_overlap(df4c, metad4c, selected_contrast):
-    """ calculate distance between groups (synonym: overlap) """
-    groupinterest, groupcontrol = divide_groups(df4c, metad4c,
-                                                selected_contrast)
-    rownames = df4c.index
-    tmp_df = df4c.copy()
-    tmp_df.index = range(len(rownames))
-    tmp_df = helpers.compute_distance_between_intervals(tmp_df, groupcontrol, groupinterest, "symmetric")
-    tmp_df.columns = [*tmp_df.columns[:-1], "distance"]
-    tmp_df.index = rownames
-    df4c = tmp_df.copy()
+def distance_or_overlap(df: pd.DataFrame, groups: List) -> pd.DataFrame:
+    """
+    For each row in the input DataFrame, computes the distance or overlap between intervals
+    provided as sublists of column names in the 'groups' list.
+    Returns:
+        DataFrame with an additional 'distance' column containing computed distances.
+    """
+    for i in df.index.values:
+        group1 = df.loc[i, groups[0]].values
+        group2 = df.loc[i, groups[1]].values
+        overlap_method = "symmetric"  # Modify as needed, can be "symmetric" or "asymmetric"
+        df.at[i, 'distance'] = helpers.compute_distance_between_intervals(group1, group2, overlap_method)
 
-    return df4c
+    return df
+
+    # groupinterest = df[groups[0]]
+    # groupcontrol = df[groups[1]]
+    # rownames = df.index
+    # tmp_df = df.copy()
+    # tmp_df.index = range(len(rownames))
+    # tmp_df = helpers.compute_distance_between_intervals(tmp_df, groupcontrol, groupinterest, "symmetric")
+    # tmp_df.columns = [*tmp_df.columns[:-1], "distance"]
+    # tmp_df.index = rownames
+    # df = tmp_df.copy()
+    #
+    # return df
 
 
 def separate_before_stats(ratiosdf):
@@ -581,79 +610,70 @@ def reorder_columns_diff_end(df):
 
 
 
-def pairwise_comparison(df: pd.DataFrame, cfg: Config) -> None:
+def pairwise_comparison(df: pd.DataFrame, dataset: Dataset, cfg: Config,
+                        comparison: List[str], test: availtest_methods_type) -> None:
     '''
-    Runs a pairwise comparison according to grouping and comparisons in the analysis yaml file
+    Runs a pairwise comparison according to the comparison list in the analysis yaml file
     '''
-# def run_differential_steps(measurements: pd.DataFrame,
-#                            metadatadf: pd.DataFrame, out_file_elements: dict,
-#                            confidic: dict, whichtest: str, args) -> None:
-#     out_dir = out_file_elements['odir']
-#     prefix = out_file_elements['prefix']
-#     co = out_file_elements['co']
-#     suffix = out_file_elements['suffix']
+    conditions_list = helpers.select_rows_by_fixed_values(df=dataset.metadata_df,
+                                                    columns=cfg.analysis.method.grouping,
+                                                    values=comparison)
+    # flatten the list of lists and select the subset of column names present in the sub dataframe
+    columns = [i for i in reduce(operator.concat, conditions_list) if i in df.columns]
+    comparisons = [list(filter(lambda x: x in columns, sublist)) for sublist in conditions_list]
+    df4c = df[columns]
+    df4c = df4c[(df4c.T != 0).any()]  # delete rows being zero everywhere
+    df4c = df4c.dropna(axis=0, how='all')
+    df4c = helpers.countnan_samples(df4c, comparisons)
+    df4c = distance_or_overlap(df4c, comparisons)
+    df4c = compute_span_incomparison(df4c, comparisons)
+    df4c['distance/span'] = df4c.distance.div(df4c.span_allsamples)
+    ratiosdf = helpers.calculate_gmean(df4c, comparisons)
+    ratiosdf, df_bad = separate_before_stats(ratiosdf)
 
-    for contrast in cfg.analysis.method.comparisons:
-        strcontrast = '_'.join(contrast)
-        df4c, metad4c = helpers.prepare4contrast(measurements, metadatadf,
-                                            confidic['grouping'], contrast)
-        df4c = df4c[(df4c.T != 0).any()]  # delete rows being zero everywhere
-        df4c = df4c.dropna(axis=0, how='all')
-        # sort them by 'newcol' the column created by prepare4contrast
-        metad4c = metad4c.sort_values("newcol")
-        df4c = calc_reduction(df4c, metad4c)
-        # adds nan_count_samples column :
-        df4c = helpers.countnan_samples(df4c, metad4c)
-        df4c = distance_or_overlap(df4c, metad4c, contrast)
-        df4c = compute_span_incomparison(df4c, metad4c, contrast)
-        df4c['distance/span'] = df4c.distance.div(df4c.span_allsamples)
-        ratiosdf = calc_ratios(df4c, metad4c, contrast)
-        ratiosdf, df_bad = separate_before_stats(ratiosdf)
+    if test == "disfit":
+        opdf = f"{prefix}--{co}--{suffix}-{strcontrast}_fitdist_plot.pdf"
+        out_histo_file = f"{out_dir}/extended/{opdf}"
+        ratiosdf = steps_fitting_method(ratiosdf, out_histo_file)
+    else:
+        result_test_df = run_statistical_test(ratiosdf, metad4c,
+                                              contrast, whichtest)
+        result_test_df.set_index("metabolite", inplace=True)
+        ratiosdf = pd.merge(ratiosdf, result_test_df,
+                            left_index=True, right_index=True)
 
-        if whichtest == "disfit":
-            opdf = f"{prefix}--{co}--{suffix}-{strcontrast}_fitdist_plot.pdf"
-            out_histo_file = f"{out_dir}/extended/{opdf}"
-            ratiosdf = steps_fitting_method(ratiosdf, out_histo_file)
+    ratiosdf["log2FC"] = np.log2(ratiosdf['FC'])
 
-        else:
-            result_test_df = run_statistical_test(ratiosdf, metad4c,
-                                                  contrast, whichtest)
-            result_test_df.set_index("metabolite", inplace=True)
-            ratiosdf = pd.merge(ratiosdf, result_test_df,
-                                left_index=True, right_index=True)
+    ratiosdf, df_no_padj = separate_before_compute_padj(
+        ratiosdf,
+        args.qualityDistanceOverSpan)
+    ratiosdf = compute_padj_version2(ratiosdf, 0.05,
+                                     args.multitest_correction)
 
-        ratiosdf["log2FC"] = np.log2(ratiosdf['FC'])
+    # re-integrate the "bad" sub-dataframes to the full dataframe
+    df_bad = complete_columns_for_bad(df_bad, ratiosdf)
+    df_no_padj = complete_columns_for_bad(df_no_padj, ratiosdf)
+    ratiosdf = pd.concat([ratiosdf, df_no_padj])
+    if df_bad.shape[0] >= 1:
+        ratiosdf = pd.concat([ratiosdf, df_bad])
 
-        ratiosdf, df_no_padj = separate_before_compute_padj(
-            ratiosdf,
-            args.qualityDistanceOverSpan)
-        ratiosdf = compute_padj_version2(ratiosdf, 0.05,
-                                         args.multitest_correction)
-
-        # re-integrate the "bad" sub-dataframes to the full dataframe
-        df_bad = complete_columns_for_bad(df_bad, ratiosdf)
-        df_no_padj = complete_columns_for_bad(df_no_padj, ratiosdf)
-        ratiosdf = pd.concat([ratiosdf, df_no_padj])
-        if df_bad.shape[0] >= 1:
-            ratiosdf = pd.concat([ratiosdf, df_bad])
-
-        ratiosdf["compartment"] = co
-        ratiosdf = reorder_columns_diff_end(ratiosdf)
-        ratiosdf = ratiosdf.sort_values(['padj', 'distance/span'],
-                                        ascending=[True, False])
-        otsv = f"{prefix}--{co}--{suffix}-{strcontrast}-{whichtest}.tsv"
-        ratiosdf.to_csv(
-            f"{out_dir}/extended/{otsv}",
-            index_label="metabolite", header=True, sep='\t')
-        # filtered by thresholds :
-        filtered_df = filter_diff_results(
-            ratiosdf,
-            confidic['thresholds']['padj'],
-            confidic['thresholds']['absolute_log2FC'])
-        otv = f'{prefix}--{co}--{suffix}-{strcontrast}-{whichtest}_filter.tsv'
-        filtered_df.to_csv(f"{out_dir}/filtered/{otv}",
-                           index_label="metabolite",
-                           header=True, sep='\t')
+    ratiosdf["compartment"] = co
+    ratiosdf = reorder_columns_diff_end(ratiosdf)
+    ratiosdf = ratiosdf.sort_values(['padj', 'distance/span'],
+                                    ascending=[True, False])
+    otsv = f"{prefix}--{co}--{suffix}-{strcontrast}-{whichtest}.tsv"
+    ratiosdf.to_csv(
+        f"{out_dir}/extended/{otsv}",
+        index_label="metabolite", header=True, sep='\t')
+    # filtered by thresholds :
+    filtered_df = filter_diff_results(
+        ratiosdf,
+        confidic['thresholds']['padj'],
+        confidic['thresholds']['absolute_log2FC'])
+    otv = f'{prefix}--{co}--{suffix}-{strcontrast}-{whichtest}_filter.tsv'
+    filtered_df.to_csv(f"{out_dir}/filtered/{otv}",
+                       index_label="metabolite",
+                       header=True, sep='\t')
 
 
 def run_multiclass(measurements: pd.DataFrame, metadatadf: pd.DataFrame,
@@ -857,8 +877,8 @@ def multiclass_andor_timecourse_andor_diff2groups(
 
 #def perform_tests(mode: str, clean_tables_path, table_prefix,
                   #metadatadf, confidic, args) -> None:
-def differential_comparison_test(file_name: data_files_keys_type, test: availtest_methods_type,
-                                 dataset: Dataset, cfg: Config) -> None:
+def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, cfg: Config,
+                            test: availtest_methods_type) -> None:
     '''
     Differential comparison is performed on compartemnatalized versions of data files
     Moreover, we replace zero values using the provided method
@@ -866,7 +886,7 @@ def differential_comparison_test(file_name: data_files_keys_type, test: availtes
     assert_literal(test, availtest_methods_type)
     assert_literal(file_name, data_files_keys_type)
 
-    impute_value = cfg.analysis.method.impute_value[file_name]
+    impute_value = cfg.analysis.method.impute_values[file_name]
     for compartment, compartemantalized_df in dataset.compartmentalized_dfs[file_name].items():
         val_instead_zero = helpers.arg_repl_zero2value(impute_value, compartemantalized_df)
         df = compartemantalized_df.replace(to_replace=0, value=val_instead_zero)
@@ -880,8 +900,9 @@ def differential_comparison_test(file_name: data_files_keys_type, test: availtes
         #     measurements, meta_co, out_file_elems,
         #     confidic, modes_specs, mode, args)
 
-        if cfg.analysis.method.comparisons.comparison_mode == 'pairwise':
-            pairwise_comparison(df, cfg)
+        for comparison in cfg.analysis.method.comparisons:
+            if cfg.analysis.method.comparison_mode == 'pairwise':
+                pairwise_comparison(df, dataset, cfg, comparison, test)
 
 def pass_confidic_timecourse_multiclass_to_arg(confidic, args):
     if (args.time_course != 'none') and ('time_course' in confidic.keys()):
@@ -927,61 +948,3 @@ def check_at_least_one_method_demanded(confidic, args) -> None:
     at_least_one_method_user = sum([diff_bool, multiclass_bool, time_bool])
     assert at_least_one_method_user > 0, "No methods chosen, abort"
 
-#
-# if __name__ == "__main__":
-#     print("\n  -*- searching for   \
-#            Differentially Abundant-or-Marked Metabolites (DAM) -*-\n")
-#     parser = diff_args()
-#     args = parser.parse_args()
-#
-#     configfile = os.path.expanduser(args.config)
-#     confidic = helpers.open_config_file(configfile)
-#     helpers.auto_check_validity_configuration_file(confidic)
-#     confidic = helpers.remove_extensions_names_measures(confidic)
-#
-#     args = pass_confidic_timecourse_multiclass_to_arg(confidic, args)
-#
-#     out_path = os.path.expanduser(confidic['out_path'])
-#     confidic['out_path'] = out_path
-#     meta_path = os.path.expanduser(confidic['metadata_path'])
-#     clean_tables_path = out_path + "results/prepared_tables/"
-#
-#     metadatadf = helpers.open_metadata(meta_path)
-#
-#     check_at_least_one_method_demanded(confidic, args)
-#
-#     # 1- abund
-#     if args.abundances:
-#         print("processing abundances")
-#         mode = "abund"
-#         abund_tab_prefix = confidic['name_abundance']
-#         perform_tests(mode, clean_tables_path, abund_tab_prefix,
-#                       metadatadf, confidic, args)
-#
-#     # 2- ME or FC
-#     if args.meanEnrich_or_fracContrib:
-#         print("processing mean enrichment or fractional contributions")
-#         mode = "mefc"
-#         fraccon_tab_prefix = confidic['name_meanE_or_fracContrib']
-#         perform_tests(mode, clean_tables_path, fraccon_tab_prefix,
-#                       metadatadf, confidic, args)
-#
-#     # 3- isotopologues
-#     if args.isotopologues:
-#         mode = "isoabsol"
-#         isos_abs_tab_prefix = confidic['name_isotopologue_abs']
-#         isos_prop_tab_prefix = confidic['name_isotopologue_prop']
-#         if (isos_abs_tab_prefix is not np.nan) and \
-#                 (isos_abs_tab_prefix != "None") and \
-#                 (isos_abs_tab_prefix is not None):
-#             print("processing absolute isotopologues")
-#             perform_tests(mode, clean_tables_path, isos_abs_tab_prefix,
-#                           metadatadf, confidic, args)
-#         else:
-#             print("processing isotopologues (values given as proportions)")
-#             mode = "isoprop"
-#             perform_tests(mode, clean_tables_path, isos_prop_tab_prefix,
-#                           metadatadf, confidic, args)
-#
-#     print("end")
-# # #END

@@ -5,18 +5,85 @@
 """
 
 import os
-import yaml
+from typing import Dict, List
+
+import constants
 import numpy as np
 import pandas as pd
+from botocore.config import Config
 from scipy import stats
 import matplotlib.pyplot as plt
 import seaborn as sns
 import locale
 import re
+from functools import reduce
 
-import constants
+from constants import assert_literal, overlap_methods_types
 
-def zero_repl_arg(zero_repl_arg: str) -> None:
+def calculate_gmean(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
+    """
+    Calculates the geometric mean for each row in the specified column groups and adds the corresponding values
+    as new columns to the DataFrame. Additionally, adds a column with the ratio of the two geometric means.
+
+    groups: A list with two sublists containing column names from df.
+
+    Returns:
+        The modified DataFrame with additional columns for the calculated geometric means and the ratio of means.
+    """
+    for i, group in enumerate(groups):
+        gmean_col = f'gmean_{i + 1}'
+        df[gmean_col] = df[group].apply(lambda x: stats.gmean(x.dropna()), axis=1)
+
+    ratio_col = 'gmean_ratio'
+    mask = df[f'gmean_{2}'] == 0
+    df[ratio_col] = df[f'gmean_{1}'] / np.where(mask, 1e-10, df[f'gmean_{2}'])
+
+    return df
+
+def calculate_gmean(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
+    """
+    Calculates the geometric mean for each row in the specified column groups
+    and adds the corresponding values as new columns to the DataFrame.
+
+    Args:
+        df: The input DataFrame.
+        groups: A list with two sublists containing column names from df.
+
+    Returns:
+        The modified DataFrame with additional columns for the calculated geometric means.
+    """
+    for i, group in enumerate(groups):
+        gmean_col = f'gmean_{i + 1}'
+        df[gmean_col] = df[group].apply(lambda x: stats.gmean(x.dropna()), axis=1)
+
+    ratio_col = 'gmean_ratio'
+    df[ratio_col] = df[f'gmean_{1}'] / df[f'gmean_{2}']
+
+    return df
+
+
+def select_rows_by_fixed_values(df, columns, values):
+    """
+    Selects rows from a DataFrame based on fixed values in multiple columns.
+    Returns: list of values of the first column for selected rows.
+    """
+
+    if not all(len(sublist) == len(columns) for sublist in values):
+        raise ValueError("Number of values in each sublist must be the same as number of columns")
+
+    # Create a mask for each column-value pair
+    first_column_values_list = []
+    for vals in values:
+        masks = []
+        for column, value in zip(columns, vals):
+            masks.append(df[column] == value)
+        # Combine the masks using logical AND
+        mask = reduce(lambda x, y: x & y, masks)
+        first_column_values_list.append(list(df[mask].iloc[:,0]))
+
+    return first_column_values_list
+
+def zero_repl_arg(zero_repl_arg: str) -> None: # TODO: this has to be cleaned up
     '''
      zero_repl_arg is a string representing the argument for replacing zero values (e.g. "min/2").
      The result is a dictionary of replacement arguments.
@@ -54,11 +121,11 @@ def arg_repl_zero2value(argum_zero_rep: str, df: pd.DataFrame) -> float:
     This filters df to include only values greater than 0 and applies the repZero function element-wise.
     WARNING: only authorised values are (min | min/n | VALUE) (default: min)
     '''
-    repZero = argum_zero_rep['repZero']
-    n = argum_zero_rep['n']
+    d = zero_repl_arg(argum_zero_rep)
+    repZero = d['repZero'] #argum_zero_rep['repZero']
+    n = d['n'] #argum_zero_rep['n']
     replacement = repZero(df[df > 0].apply(repZero, n=1), n=n)
     return replacement
-
 
 def overlap_symmetric(x: np.array, y: np.array) -> int:
     a = [np.nanmin(x), np.nanmax(x)]
@@ -76,28 +143,17 @@ def overlap_asymmetric(x: np.array, y: np.array) -> int:
     overlap = np.nanmin(y) - np.nanmax(x)
     return overlap
 
-def compute_distance_between_intervals(df: pd.DataFrame, group1, group2,
+def compute_distance_between_intervals(group1: np.array, group2: np.array,
                                        overlap_method: str) -> pd.DataFrame:
     """
-        For each row in the input DataFrame, computes the distance between intervals
-        provided as 2 groups of columns in the input dataframe
-
-        Returns:
-             DataFrame with an additional column containing computed distances.
+        computes the distance between intervals provided in group1 and group2
     """
+    assert_literal(overlap_method, overlap_methods_types)
 
-    for i in df.index.values:
-        group1_values = np.array(group1.iloc[i])
-        group2_values = np.array(group2.iloc[i])
-
-        if overlap_method == "symmetric":
-            df.loc[i, 'distance'] = overlap_symmetric(group1_values,
-                                                      group2_values)
-        else:
-            df.loc[i, 'distance'] = overlap_asymmetric(group1_values,
-                                                       group2_values)
-
-    return df
+    if overlap_method == "symmetric":
+        return overlap_symmetric(group1, group2)
+    else:
+        return overlap_asymmetric(group1, group2)
 
 def df_to_dict_by_compartment(df: pd.DataFrame, metadata: pd.DataFrame) -> dict:
     '''
@@ -137,7 +193,7 @@ def verify_good_extensions_measures(confidic) -> None:
     if user put them by mistake, verify the format is ok.
     See also 'remove_extensions_names_measures()'
     """
-    list_config_tabs = [confidic['abundance_file_name'],
+    list_config_tabs = [confidic['abundances_file_name'],
                         confidic['meanE_or_fracContrib_file_name'],
                         confidic['isotopologue_prop_file_name'],
                         confidic['isotopologue_abs_file_name']]
@@ -210,8 +266,10 @@ def isotopologues_meaning_df(isotopologues_full_list):
     df = pd.DataFrame.from_dict(xu)
     return df
 
+import pandas as pd
 
-def prepare4contrast(df: DataFrame, ametadata, grouping: list, contrast: list):
+
+def prepare4contrast(df: pd.DataFrame, cfg: Config):
     """
     grouping,  example :  ['condition', 'timepoint' ]
           if (for a sample)  condition = "treatment" and  timepoint = "t12h",
@@ -383,22 +441,31 @@ def give_ratios_df(df1, geomInterest, geomControl):
     return df
 
 
-def countnan_samples(df, metad4c):
-    """ only works if two classes or levels """
-    vecout = []
-    grs = metad4c['newcol'].unique()
-    gr1 = metad4c.loc[metad4c['newcol'] == grs[0], 'name_to_plot']
-    gr2 = metad4c.loc[metad4c['newcol'] == grs[1], 'name_to_plot']
+def countnan_samples(df: pd.DataFrame, groups: List) -> pd.DataFrame:
+    """
+    Calculates the count of NaN values in each row of the DataFrame and for each
+    group within the specified columns, and adds two new columns to the DataFrame with the counts.
 
-    for i, row in df.iterrows():
-        vec1 = row[gr1].tolist()
-        vec2 = row[gr2].tolist()
-        val1 = np.sum(np.isnan(vec1))
-        val2 = np.sum(np.isnan(vec2))
-        vecout.append(tuple([str(val1) + '/' + str(len(vec1)),
-                             str(val2) + '/' + str(len(vec2))]))
+    Only works if groups contains two sublists of column names
+    """
+    assert(len(groups) == 2)
+    # vecout = []
+    # grs = metad4c['newcol'].unique()
+    # gr1 = metad4c.loc[metad4c['newcol'] == grs[0], 'name_to_plot']
+    # gr2 = metad4c.loc[metad4c['newcol'] == grs[1], 'name_to_plot']
+    #
+    # for i, row in df.iterrows():
+    #     vec1 = row[gr1].tolist()
+    #     vec2 = row[gr2].tolist()
+    #     val1 = np.sum(np.isnan(vec1))
+    #     val2 = np.sum(np.isnan(vec2))
+    #     vecout.append(tuple([str(val1) + '/' + str(len(vec1)),
+    #                          str(val2) + '/' + str(len(vec2))]))
 
-    df['count_nan_samples'] = vecout
+    df['count_nan_samples_group1'] = df[groups[0]].isnull().sum(axis=1)
+    df['count_nan_samples_group2'] = df[groups[1]].isnull().sum(axis=1)
+
+   # df['count_nan_samples'] = vecout
     return df
 
 

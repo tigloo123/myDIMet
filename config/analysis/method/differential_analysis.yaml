@@ -10,8 +10,8 @@ grouping :
 comparison_mode : pairwise
 
 comparisons :
-  - [L-Cycloserine_T0, Control_T0]
-  - [L-Cycloserine_T2h, Control_T2h]
+  - [[L-Cycloserine, T0], [Control, T0]]
+  - [[L-Cycloserine, T2h], [Control, T2h]]
 
 statistical_test:
   abundances_file_name: prm-scipy

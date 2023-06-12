@@ -22,7 +22,7 @@ class DatasetConfig(BaseModel):
     # We allow for some default values for the following files
     # will be ignored if they do not exist
 
-    abundance_file_name: str = "AbundanceCorrected"
+    abundances_file_name: str = "AbundanceCorrected"
     meanE_or_fracContrib_file_name: str = "MeanEnrichment13C"
     isotopologue_prop_file_name: str = "IsotopologuesProp"  # isotopologue proportions
     isotopologue_abs_file_name: str = "IsotopologuesAbs"  # isotopologue absolute values
@@ -56,7 +56,7 @@ class Dataset(BaseModel):
         # start loading the dataframes
         file_paths = [
             ("metadata", os.path.join(self.raw_data_folder, self.config.metadata + ".csv")),
-            ("abundance", os.path.join(self.raw_data_folder, self.config.abundance_file_name + ".csv")),
+            ("abundance", os.path.join(self.raw_data_folder, self.config.abundances_file_name + ".csv")),
             ("meanE_or_fracContrib", os.path.join(self.raw_data_folder, self.config.meanE_or_fracContrib_file_name + ".csv")),
             ("isotopologue_prop", os.path.join(self.raw_data_folder, self.config.isotopologue_prop_file_name + ".csv")),
             ("isotopologue_abs", os.path.join(self.raw_data_folder, self.config.isotopologue_abs_file_name + ".csv"))
@@ -83,12 +83,13 @@ class Dataset(BaseModel):
         compartments = self.metadata_df['short_comp'].unique().tolist()
         for c in compartments:
             file_paths = [
-                ("abundance_file_name", os.path.join(self.processed_data_folder,f'{self.config.abundance_file_name}--{c}--{suffix}.tsv')),
-                ("meanE_or_fracContrib_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundance_file_name}--{c}--{suffix}.tsv')),
-                ("isotopologue_prop_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundance_file_name}--{c}--{suffix}.tsv')),
-                ("isotopologue_abs_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundance_file_name}--{c}--{suffix}.tsv'))
+                ("abundances_file_name", os.path.join(self.processed_data_folder,f'{self.config.abundances_file_name}--{c}--{suffix}.tsv')),
+                ("meanE_or_fracContrib_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundances_file_name}--{c}--{suffix}.tsv')),
+                ("isotopologue_prop_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundances_file_name}--{c}--{suffix}.tsv')),
+                ("isotopologue_abs_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundances_file_name}--{c}--{suffix}.tsv'))
             ]
 
             for label, fp in file_paths:
+                self.compartmentalized_dfs[label] = {}
                 self.compartmentalized_dfs[label][c] = pd.read_csv(fp, sep='\t', header=0, index_col=0)
                 logger.info("Loaded compartmentalized %s DF for %s", label, c)

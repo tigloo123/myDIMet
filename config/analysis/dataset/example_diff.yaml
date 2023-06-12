@@ -8,7 +8,7 @@ subfolder: example_diff
 #within the data subfolder/raw
 metadata: metadata
 
-abundance_file_name : rawAbundances
+abundances_file_name : rawAbundances
 meanE_or_fracContrib_file_name : FracContribution_C
 isotopologue_prop_file_name : CorrectedIsotopologues # isotopologue proportions
 isotopologue_abs_file_name : IsotopologuesAbs  # isotopologue absolute values

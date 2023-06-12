@@ -19,7 +19,7 @@ def main_run_analysis(cfg: DictConfig) -> None:
 
     dataset: Dataset = Dataset(config=hydra.utils.instantiate(cfg.analysis.dataset))
     dataset.preload()
-    make_dataset.main_split_datasets(cfg, dataset)
+    make_dataset.split_datasets(cfg, dataset)
     method: Method = hydra.utils.instantiate(cfg.analysis.method).build() # method factory
 
     method.run(cfg, dataset)

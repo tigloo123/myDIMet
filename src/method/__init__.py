@@ -14,7 +14,7 @@ from pydantic import BaseModel as PydanticBaseModel
 
 from data import Dataset
 from visualization.abundance_bars import run_steps_abund_bars
-from processing.differential_analysis import differential_comparison_test
+from processing.differential_analysis import differential_comparison
 
 logger = logging.getLogger(__name__)
 
@@ -74,11 +74,11 @@ class AbundancePlot(Method):
         logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
         logger.info("Will plot the abundance plot, with the following config: %s", self.config)
         dataset.load_compartmentalized_data(suffix=cfg.suffix)
-        abundance_file_name = cfg.analysis.dataset.abundance_file_name
+        abundances_file_name = cfg.analysis.dataset.abundances_file_name
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
         os.mkdir(out_plot_dir)
         run_steps_abund_bars(
-            abundance_file_name,
+            abundances_file_name,
             dataset,
             out_plot_dir,
             cfg)
@@ -93,13 +93,8 @@ class DifferentialAnalysis(Method):
 
         for file_name, test in self.config.statistical_test.items():
             if test is None : continue
-            logger.info(f"Testing {file_name} with {test}")
-            # modes:
-            # 'abund'
-            # 'mefc'
-            # 'isoabsol'
-            # 'isoprop'
-            differential_comparison_test(file_name, test, dataset, cfg)
+            logger.info(f"Running differential analysis on {file_name} using {test} test")
+            differential_comparison(file_name, dataset, cfg, test)
             #perform_tests(mode, clean_tables_path, fraccon_tab_prefix,
             #              metadatadf, confidic, args)
 

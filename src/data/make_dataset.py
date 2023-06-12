@@ -36,7 +36,7 @@ def prep_args():
 
 def tabs_2_frames_dict(cfg, dataset : Dataset) -> dict:
     frames_dict = dict()
-    df_list = [(cfg.analysis.dataset.abundance_file_name , dataset.abundance_df),
+    df_list = [(cfg.analysis.dataset.abundances_file_name , dataset.abundance_df),
                (cfg.analysis.dataset.meanE_or_fracContrib_file_name, dataset.meanE_or_fracContrib_df),
                (cfg.analysis.dataset.isotopologue_prop_file_name, dataset.isotopologue_prop_df),
                (cfg.analysis.dataset.isotopologue_abs_file_name , dataset.isotopologue_abs_df)]
@@ -106,12 +106,7 @@ def split_datafiles_by_compartment(cfg : DictConfig, dataset : Dataset, out_data
 
     return frames_dict
 
-def main_split_datasets(cfg: DictConfig, dataset: Dataset) -> None:
-    out_data_path = os.path.join(os.getcwd(), cfg.data_path, "processed")
-    os.makedirs(out_data_path, exist_ok=True)
-    save_datafiles_split_by_compartment(cfg, dataset=dataset, out_data_path=out_data_path)
-
-def save_datafiles_split_by_compartment(cfg : DictConfig, dataset : Dataset, out_data_path : str) -> None:
+def save_datafiles_split_by_compartment(cfg: DictConfig, dataset: Dataset, out_data_path: str) -> None:
     file_name_to_df_dict = split_datafiles_by_compartment(cfg, dataset, out_data_path)
 
     suffix_str = cfg.suffix
@@ -125,3 +120,8 @@ def save_datafiles_split_by_compartment(cfg : DictConfig, dataset : Dataset, out
             tmp.to_csv(os.path.join(out_data_path, output_file_name),
                 sep='\t', header=True, index=False)
             logger.info(f"Saved the {compartment} compartment version of {file_name} in {out_data_path}")
+
+def split_datasets(cfg: DictConfig, dataset: Dataset) -> None:
+    out_data_path = os.path.join(os.getcwd(), cfg.data_path, "processed")
+    os.makedirs(out_data_path, exist_ok=True)
+    save_datafiles_split_by_compartment(cfg, dataset=dataset, out_data_path=out_data_path)
