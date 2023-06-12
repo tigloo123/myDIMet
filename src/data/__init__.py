@@ -90,6 +90,7 @@ class Dataset(BaseModel):
             ]
 
             for label, fp in file_paths:
-                self.compartmentalized_dfs[label] = {}
+                if label not in self.compartmentalized_dfs:
+                    self.compartmentalized_dfs[label] = {}
                 self.compartmentalized_dfs[label][c] = pd.read_csv(fp, sep='\t', header=0, index_col=0)
                 logger.info("Loaded compartmentalized %s DF for %s", label, c)

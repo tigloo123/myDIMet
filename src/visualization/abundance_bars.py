@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from hydra.core.config_store import ConfigStore
+from omegaconf import DictConfig
 
 from data import Dataset
 from helpers import dynamic_xposition_ylabeltext
@@ -138,21 +139,21 @@ def run_steps_abund_bars(
         table_prefix,
         dataset: Dataset,
         out_plot_dir,
-        analysis_confidic) -> None:
+        cfg: DictConfig) -> None:
     metadata_df = dataset.metadata_df
 
     # This has to migrate somewhere else than the top level configuration
     ##############################
-    time_sel = analysis_confidic["time_sel"]  # locate where it is used
-    selectedmetsD = analysis_confidic["metabolites_to_plot"]  # locate where it is used
-    condilevels = analysis_confidic["conditions"]  # <= locate where it is used
+    time_sel = cfg.analysis.dataset.time_sel  # locate where it is used
+    selectedmetsD = cfg.analysis.dataset.metabolites_to_plot  # locate where it is used
+    condilevels = cfg.analysis.dataset.conditions  # <= locate where it is used
 
-    axisx_labeltilt = int(analysis_confidic["axisx_labeltilt"])
-    axisx_var = analysis_confidic["axisx"]
-    hue_var = analysis_confidic["barcolor"]
+    axisx_labeltilt = cfg.analysis.method.axisx_labeltilt
+    axisx_var = cfg.analysis.method.axisx
+    hue_var = cfg.analysis.method.barcolor
 
-    width_each_subfig = float(analysis_confidic["width_each_subfig"])
-    wspace_subfigs = float(analysis_confidic["wspace_subfigs"])
+    width_each_subfig = cfg.analysis.method.width_each_subfig
+    wspace_subfigs = cfg.analysis.method.wspace_subfigs
     ##############################
 
     # data_path = analysis_confidic["data_path"]
@@ -183,4 +184,4 @@ def run_steps_abund_bars(
                             "total abundance",
                             axisx_var, hue_var, plotwidth,
                             out_plot_dir, axisx_labeltilt,
-                            wspace_subfigs, analysis_confidic)
+                            wspace_subfigs, cfg)

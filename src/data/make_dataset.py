@@ -122,6 +122,5 @@ def save_datafiles_split_by_compartment(cfg: DictConfig, dataset: Dataset, out_d
             logger.info(f"Saved the {compartment} compartment version of {file_name} in {out_data_path}")
 
 def split_datasets(cfg: DictConfig, dataset: Dataset) -> None:
-    out_data_path = os.path.join(os.getcwd(), cfg.data_path, "processed")
-    os.makedirs(out_data_path, exist_ok=True)
-    save_datafiles_split_by_compartment(cfg, dataset=dataset, out_data_path=out_data_path)
+    os.makedirs(dataset.processed_data_folder, exist_ok=True)
+    save_datafiles_split_by_compartment(cfg, dataset=dataset, out_data_path=dataset.processed_data_folder)

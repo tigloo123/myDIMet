@@ -13,13 +13,13 @@ data_path: "/Users/macha/Projects/myDIMet/data/example_diff"
 figure_path: figures
 suffix : cyc1
 
-# metabolites to plot:
-metabolites_to_plot:
-  cell: ["Fructose_1,6-bisphosphate", # in "quotes" because has a comma inside
-         L-Lactic_acid, Pyruvic_acid, L-Malic_acid,
-         Fumaric_acid, L-Alanine, L-Glutamic_acid,
-         L-Glutamine, L-Aspartic_acid]
-  med:  [L-Lactic_acid, Pyruvic_acid, L-Alanine, L-Asparagine]
+## metabolites to plot:
+#metabolites_to_plot:
+#  cell: ["Fructose_1,6-bisphosphate", # in "quotes" because has a comma inside
+#         L-Lactic_acid, Pyruvic_acid, L-Malic_acid,
+#         Fumaric_acid, L-Alanine, L-Glutamic_acid,
+#         L-Glutamine, L-Aspartic_acid]
+#  med:  [L-Lactic_acid, Pyruvic_acid, L-Alanine, L-Asparagine]
 
 # Isotopologue Contribution plot configuration
 # -----------------------------

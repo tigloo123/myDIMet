@@ -6,7 +6,5 @@ time_sel :
   - T24
 
 defaults:
-#  - dataset: toy1
-#  - method: abundance_plot
-  - dataset: example_diff
-  - method: differential_analysis #abundance_plot
+  - dataset: toy1
+  - method: abundance_plot

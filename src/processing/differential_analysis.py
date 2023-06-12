@@ -12,9 +12,9 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 import statsmodels.stats.multitest as ssm
-from botocore.config import Config
 from functools import reduce
 import operator
+from omegaconf import DictConfig
 
 from constants import availtest_methods, correction_methods, availtest_methods_type, assert_literal, \
     data_files_keys_type
@@ -555,7 +555,7 @@ def reorder_columns_diff_end(df: pd.DataFrame) -> pd.DataFrame:
 
 
 
-def pairwise_comparison(df: pd.DataFrame, dataset: Dataset, cfg: Config,
+def pairwise_comparison(df: pd.DataFrame, dataset: Dataset, cfg: DictConfig,
                         comparison: List[str], test: availtest_methods_type) -> pd.DataFrame:
     '''
     Runs a pairwise comparison according to the comparison list in the analysis yaml file
@@ -799,9 +799,7 @@ def multiclass_andor_timecourse_andor_diff2groups(
                                confidic, whichtest, args)
 
 
-#def perform_tests(mode: str, clean_tables_path, table_prefix,
-                  #metadatadf, confidic, args) -> None:
-def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, cfg: Config,
+def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, cfg: DictConfig,
                             test: availtest_methods_type) -> None:
     '''
     Differential comparison is performed on compartemnatalized versions of data files
@@ -879,4 +877,3 @@ def check_at_least_one_method_demanded(confidic, args) -> None:
 
     at_least_one_method_user = sum([diff_bool, multiclass_bool, time_bool])
     assert at_least_one_method_user > 0, "No methods chosen, abort"
-
