@@ -100,5 +100,3 @@ class DifferentialAnalysis(Method):
             if test is None : continue
             logger.info(f"Running differential analysis on {file_name} using {test} test")
             differential_comparison(file_name, dataset, cfg, test,out_table_dir=out_table_dir)
-            #perform_tests(mode, clean_tables_path, fraccon_tab_prefix,
-            #              metadatadf, confidic, args)

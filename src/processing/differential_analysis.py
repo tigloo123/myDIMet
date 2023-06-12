@@ -164,25 +164,12 @@ def compute_span_incomparison(df: pd.DataFrame, groups: List) -> pd.DataFrame:
          DataFrame with an additional 'span_allsamples' column containing the computed differences.
     """
     for i in df.index.values:
-        group1 = df.loc[i, groups[0]]
-        group2 = df.loc[i, groups[1]]
+        all_values = list(df.loc[i, groups[0]] )+ list(df.loc[i, groups[1]])
 
-        interval = max(group1) - min(group2)
+        interval = max(all_values) - min(all_values)
         df.loc[i, 'span_allsamples'] = interval
 
     return df
-    #
-    #
-    # expected_samples = metadata.loc[metadata['newcol'].isin(contrast),
-    #                                 'name_to_plot']
-    # selcols_df = df[expected_samples].copy()
-    # for i in df.index.values:
-    #     values_this_comparison = selcols_df.loc[i, :].to_numpy()
-    #     span = values_this_comparison.max() - values_this_comparison.min()
-    #     df.loc[i, 'span_allsamples'] = span
-    #
-    # return df
-
 
 def calc_reduction(df, metad4c):
     def renaming_original_col_sams(df):
@@ -410,8 +397,10 @@ def run_statistical_test(df: pd.DataFrame, dataset: Dataset, cfg: DictConfig,
     metabolites = df.index.values
     stare, pval = [], []
     for i in df.index:
-        vInterest = ~np.isnan(np.array(df.loc[i, comparison[0]], dtype=float))
-        vBaseline = ~np.isnan(np.array(df.loc[i, comparison[1]], dtype=float))
+        a1 = np.array(df.loc[i, comparison[0]], dtype=float)
+        a2 = np.array(df.loc[i, comparison[1]], dtype=float)
+        vInterest = a1[~np.isnan(a1)]
+        vBaseline = a2[~np.isnan(a2)]
 
         if (len(vInterest) < 2) | (len(vBaseline) < 2):
             return pd.DataFrame(data={"metabolite": metabolites,
@@ -524,7 +513,8 @@ def filter_diff_results(ratiosdf, padj_cutoff, log2FC_abs_cutoff):
 
 def reorder_columns_diff_end(df: pd.DataFrame) -> pd.DataFrame:
     standard_cols = [
-        'count_nan_samples',
+        'count_nan_samples_group1',
+        'count_nan_samples_group2',
         'distance',
         'span_allsamples',
         'distance/span',
@@ -542,7 +532,8 @@ def reorder_columns_diff_end(df: pd.DataFrame) -> pd.DataFrame:
         'padj',
         'distance/span',
         'FC',
-        'count_nan_samples',
+        'count_nan_samples_group1',
+        'count_nan_samples_group2',
         'distance',
         'span_allsamples',
         'compartment']
@@ -579,8 +570,6 @@ def pairwise_comparison(df: pd.DataFrame, dataset: Dataset, cfg: DictConfig,
     df_good, df_bad = select_rows_with_sufficient_non_nan_values(df4c)
 
     if test == "disfit":
-        # opdf = f"{prefix}--{co}--{suffix}-{strcontrast}_fitdist_plot.pdf"
-        # out_histo_file = f"{out_dir}/extended/{opdf}"
         df_good = steps_fitting_method(df_good, dataset, cfg)
     else:
         result_test_df = run_statistical_test(df_good, dataset, cfg, this_comparison, test)
@@ -589,7 +578,7 @@ def pairwise_comparison(df: pd.DataFrame, dataset: Dataset, cfg: DictConfig,
         df_good = pd.merge(df_good, result_test_df,
                            left_index=True, right_index=True)
 
-    df_good["log2FC"] = np.log2(df_good['gmean_ratio'])  # was "FC"
+    df_good["log2FC"] = np.log2(df_good['FC'])
 
     df_good, df_no_padj = helpers.split_rows_by_threshold(df_good, 'distance/span',
                                                           cfg.analysis.method.qualityDistanceOverSpan)
@@ -827,8 +816,8 @@ def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, c
                 # filtered by thresholds :
                 filtered_df = filter_diff_results(
                     result,
-                    cfg.analyses.method.thresholds.padj,
-                    cfg.analyses.method.thresholds.absolute_log2FC)
+                    cfg.analysis.method.thresholds.padj,
+                    cfg.analysis.method.thresholds.absolute_log2FC)
                 filtered_df.to_csv(os.path.join(out_table_dir, f"{base_file_name}_filter.tsv"),
                                    index_label="metabolite",
                                    header=True, sep='\t')

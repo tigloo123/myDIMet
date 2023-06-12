@@ -55,40 +55,21 @@ def calculate_gmean(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
     """
     Calculates the geometric mean for each row in the specified column groups and adds the corresponding values
     as new columns to the DataFrame. Additionally, adds a column with the ratio of the two geometric means.
+    Takes care of the potential division by zero error by replacing 0 by 1e-10 in division
 
     groups: A list with two sublists containing column names from df.
 
     Returns:
-        The modified DataFrame with additional columns for the calculated geometric means and the ratio of means.
+        The modified DataFrame with additional columns for the calculated geometric means
+        and the ratio of means (FC - Fold Change).
     """
     for i, group in enumerate(groups):
         gmean_col = f'gmean_{i + 1}'
         df[gmean_col] = df[group].apply(lambda x: stats.gmean(x.dropna()), axis=1)
 
-    ratio_col = 'gmean_ratio'
+    ratio_col = 'FC'
     mask = df[f'gmean_{2}'] == 0
     df[ratio_col] = df[f'gmean_{1}'] / np.where(mask, 1e-10, df[f'gmean_{2}'])
-
-    return df
-
-def calculate_gmean(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
-    """
-    Calculates the geometric mean for each row in the specified column groups
-    and adds the corresponding values as new columns to the DataFrame.
-
-    Args:
-        df: The input DataFrame.
-        groups: A list with two sublists containing column names from df.
-
-    Returns:
-        The modified DataFrame with additional columns for the calculated geometric means.
-    """
-    for i, group in enumerate(groups):
-        gmean_col = f'gmean_{i + 1}'
-        df[gmean_col] = df[group].apply(lambda x: stats.gmean(x.dropna()), axis=1)
-
-    ratio_col = 'gmean_ratio'
-    df[ratio_col] = df[f'gmean_{1}'] / df[f'gmean_{2}']
 
     return df
 
@@ -253,10 +234,9 @@ def remove_extensions_names_measures(confidic) -> dict:
     return confidic
 
 
-def detect_and_create_dir(namenesteddir):
+def detect_and_create_dir(namenesteddir): # TODO : replace by os.makedirs(file_name, exist_ok = True)
     if not os.path.exists(namenesteddir):
         os.makedirs(namenesteddir)
-
 
 def open_metadata(file_path):
     try:
