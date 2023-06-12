@@ -18,14 +18,14 @@ comparisons :
 statistical_test:
   abundances_file_name: prm-scipy
   meanE_or_fracContrib_file_name: KW
-  isotopologue_abs_file_name: ""
-  isotopologue_prop_file_name: ""
+  isotopologue_abs_file_name:
+  isotopologue_prop_file_name:
 
 impute_values:
   abundances_file_name: "min"
   meanE_or_fracContrib_file_name: "min/2"
-  isotopologue_abs_file_name: ""
-  isotopologue_prop_file_name: ""
+  isotopologue_abs_file_name:
+  isotopologue_prop_file_name:
 
 thresholds:
   padj: 0.2
