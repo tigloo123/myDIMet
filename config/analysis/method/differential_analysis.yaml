@@ -8,6 +8,8 @@ grouping :
   - timepoint
 
 comparison_mode : pairwise
+qualityDistanceOverSpan : -0.3
+correction_method : "bonferroni"
 
 comparisons :
   - [[L-Cycloserine, T0], [Control, T0]]
@@ -28,4 +30,3 @@ impute_values:
 thresholds:
   padj_threshold: 0.2
   absolute_log2FC_threshold: 3
-

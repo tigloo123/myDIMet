@@ -238,47 +238,22 @@ def distance_or_overlap(df: pd.DataFrame, groups: List) -> pd.DataFrame:
 
     return df
 
-    # groupinterest = df[groups[0]]
-    # groupcontrol = df[groups[1]]
-    # rownames = df.index
-    # tmp_df = df.copy()
-    # tmp_df.index = range(len(rownames))
-    # tmp_df = helpers.compute_distance_between_intervals(tmp_df, groupcontrol, groupinterest, "symmetric")
-    # tmp_df.columns = [*tmp_df.columns[:-1], "distance"]
-    # tmp_df.index = rownames
-    # df = tmp_df.copy()
-    #
-    # return df
 
-
-def separate_before_stats(ratiosdf):
-    ratiosdf['has_replicates'] = flag_has_replicates(ratiosdf)
+def select_rows_with_sufficient_non_nan_values(df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
+    """
+    Identifies rows in the input DataFrame that have enough replicates.
+    Separates the DataFrame into two parts based on the presence or absence of enough replicates,
+    returning them as separate DataFrames.
+    """
     try:
-        # has_replicates: 1 true, is usable
-        good_df = ratiosdf.loc[ratiosdf['has_replicates'] == 1, :]
-        undesired_mets = set(ratiosdf.index) - set(good_df.index)
-        bad_df = ratiosdf.loc[list(undesired_mets)]
-        good_df = good_df.drop(columns=['has_replicates'])
-        bad_df = bad_df.drop(columns=['has_replicates'])
+        bad_df = df[(df['count_nan_samples_group1'] > 0) | (df['count_nan_samples_group2'] > 0)]
+        good_df = df[(df['count_nan_samples_group1'] == 0) & (df['count_nan_samples_group2'] == 0)]
+        # removed the side effect
+        #good_df = good_df.drop(columns=['count_nan_samples_group1', 'count_nan_samples_group2'])
+        #bad_df = bad_df.drop(columns=['count_nan_samples_group1', 'count_nan_samples_group2'])
     except Exception as e:
         print(e)
         print("Error in separate_before_stats (enough replicates ?)")
-
-    return good_df, bad_df
-
-
-def separate_before_compute_padj(ratiosdf, quality_dist_span):
-    try:
-        quality_dist_span = float(quality_dist_span)
-        good_df = ratiosdf.loc[
-                  ratiosdf['distance/span'] >= quality_dist_span, :]
-
-        undesired_mets = set(ratiosdf.index) - set(good_df.index)
-        bad_df = ratiosdf.loc[list(undesired_mets)]
-    except Exception as e:
-        print(e)
-        print("Error in separate_before_comp_padj",
-              " check qualityDistanceOverSpan arg")
 
     return good_df, bad_df
 
@@ -425,91 +400,69 @@ def statistic_absolute_geommean_diff(b_values: np.array, a_values: np.array):
     return diff_absolute
 
 
-def run_statistical_test(redu_df, metas, contrast, whichtest):
+def run_statistical_test(df: pd.DataFrame, dataset: Dataset, cfg: Config,
+                         comparison: List, test: str): #redu_df, metas, contrast, whichtest):
     """
-    Parameters
-    ----------
-    redu_df : pandas, reduced dataframe
-    metas : pandas, 2nd element output of prepare4contrast.
-    contrast : a list
-    Returns
-    -------
-    DIFFRESULT : pandas
-        THE PAIR-WISE DIFFERENTIAL ANALYSIS RESULTS.
+    This is a switch function for running a pairwise differential analysis statistical test
     """
-    mets = []
-    stare = []
-    pval = []
-    metaboliteshere = redu_df.index
-    for i in metaboliteshere:
-        mets.append(i)
-        row = redu_df.loc[i, :]  # row is a series, colnames pass to index
+    metabolites = df.index.values
+    stare, pval = [], []
+    for i in df.index:
+        vInterest = ~np.isnan(np.array(df.loc[i, comparison[0]], dtype=float))
+        vBaseline = ~np.isnan(np.array(df.loc[i, comparison[1]], dtype=float))
 
-        columnsInterest = metas.loc[metas["newcol"] == contrast[0],
-                                    'name_to_plot']
-        columnsBaseline = metas.loc[metas["newcol"] == contrast[1],
-                                    'name_to_plot']
+        if (len(vInterest) < 2) | (len(vBaseline)  < 2):
+            return pd.DataFrame(data={"metabolite": metabolites,
+                                      "stat": [float('nan')] * len(metabolites),
+                                      "pvalue": [float('nan')] * len(metabolites)})
 
-        vInterest = np.array(row[columnsInterest], dtype=float)
-        vBaseline = np.array(row[columnsBaseline], dtype=float)
+        if test == "MW":
+            stat_result, pval_result = compute_mann_whitney_allH0(
+                vInterest, vBaseline)
 
-        vInterest = vInterest[~np.isnan(vInterest)]  # exclude nan elements
-        vBaseline = vBaseline[~np.isnan(vBaseline)]  # exclude nan elements
+        elif test == "Tt":
+            stat_result, pval_result = scipy.stats.ttest_ind(
+                vInterest, vBaseline, alternative="two-sided")
 
-        if (len(vInterest) >= 2) and (len(vBaseline) >= 2):
+        elif test == "KW":
+            stat_result, pval_result = scipy.stats.kruskal(
+                vInterest, vBaseline)
 
-            if whichtest == "MW":
-                stat_result, pval_result = compute_mann_whitney_allH0(
-                    vInterest, vBaseline)
+        elif test == "ranksum":
+            stat_result, pval_result = compute_ranksums_allH0(
+                vInterest, vBaseline)
 
-            elif whichtest == "Tt":
-                stat_result, pval_result = scipy.stats.ttest_ind(
-                    vInterest, vBaseline, alternative="two-sided")
+        elif test == "Wcox":
+            # signed-rank test: one sample (independence),
+            # or two paired or related samples
+            stat_result, pval_result = compute_wilcoxon_allH0(
+                vInterest, vBaseline)
 
-            elif whichtest == "KW":
-                stat_result, pval_result = scipy.stats.kruskal(
-                    vInterest, vBaseline)
+        elif test == "BrMu":
+            stat_result, pval_result = compute_brunnermunzel_allH0(
+                vInterest, vBaseline)
 
-            elif whichtest == "ranksum":
-                stat_result, pval_result = compute_ranksums_allH0(
-                    vInterest, vBaseline)
+        elif test == "prm-scipy":
+            # test statistic is absolute geommean differences,
+            # so "greater" satisfy
+            prm_res = scipy.stats.permutation_test(
+                (vInterest, vBaseline),
+                statistic=statistic_absolute_geommean_diff,
+                permutation_type='independent',
+                vectorized=False,
+                n_resamples=9999,
+                batch=None,
+                alternative='greater')
+            stat_result, pval_result = prm_res.statistic, prm_res.pvalue
 
-            elif whichtest == "Wcox":
-                # signed-rank test: one sample (independence),
-                # or two paired or related samples
-                stat_result, pval_result = compute_wilcoxon_allH0(
-                    vInterest, vBaseline)
+        stare.append(stat_result)
+        pval.append(pval_result)
 
-            elif whichtest == "BrMu":
-                stat_result, pval_result = compute_brunnermunzel_allH0(
-                    vInterest, vBaseline)
-
-            elif whichtest == "prm-scipy":
-                # test statistic is absolute geommean differences,
-                # so "greater" satisfy
-                prm_res = scipy.stats.permutation_test(
-                    (vInterest, vBaseline),
-                    statistic=statistic_absolute_geommean_diff,
-                    permutation_type='independent',
-                    vectorized=False,
-                    n_resamples=9999,
-                    batch=None,
-                    alternative='greater')
-                stat_result, pval_result = prm_res.statistic, prm_res.pvalue
-
-            stare.append(stat_result)
-            pval.append(pval_result)
-
-        else:
-            stare.append(np.nan)
-            pval.append(np.nan)
-
-        # end if
-    # end for
-    prediffr = pd.DataFrame(data={"metabolite": mets,
+    assert(len(metabolites) == len(stare))
+    assert(len(metabolites) == len(pval))
+    return pd.DataFrame(data={"metabolite": metabolites,
                                   "stat": stare,
                                   "pvalue": pval})
-    return prediffr
 
 
 def steps_fitting_method(ratiosdf, out_histo_file):
@@ -555,14 +508,6 @@ def compute_padj_version2(df, correction_alpha, correction_method):
 
     return df
 
-
-def complete_columns_for_bad(bad_df, ratiosdf):
-    columns_missing = set(ratiosdf.columns) - set(bad_df.columns)
-    for col in list(columns_missing):
-        bad_df[col] = np.nan
-    return bad_df
-
-
 def filter_diff_results(ratiosdf, padj_cutoff, log2FC_abs_cutoff):
     ratiosdf['abslfc'] = ratiosdf['log2FC'].abs()
     ratiosdf = ratiosdf.loc[(ratiosdf['padj'] <= padj_cutoff) &
@@ -574,7 +519,7 @@ def filter_diff_results(ratiosdf, padj_cutoff, log2FC_abs_cutoff):
     return ratiosdf
 
 
-def reorder_columns_diff_end(df):
+def reorder_columns_diff_end(df: pd.DataFrame) -> pd.DataFrame:
     standard_cols = [
         'count_nan_samples',
         'distance',
@@ -611,7 +556,7 @@ def reorder_columns_diff_end(df):
 
 
 def pairwise_comparison(df: pd.DataFrame, dataset: Dataset, cfg: Config,
-                        comparison: List[str], test: availtest_methods_type) -> None:
+                        comparison: List[str], test: availtest_methods_type) -> pd.DataFrame:
     '''
     Runs a pairwise comparison according to the comparison list in the analysis yaml file
     '''
@@ -620,60 +565,39 @@ def pairwise_comparison(df: pd.DataFrame, dataset: Dataset, cfg: Config,
                                                     values=comparison)
     # flatten the list of lists and select the subset of column names present in the sub dataframe
     columns = [i for i in reduce(operator.concat, conditions_list) if i in df.columns]
-    comparisons = [list(filter(lambda x: x in columns, sublist)) for sublist in conditions_list]
+    this_comparison = [list(filter(lambda x: x in columns, sublist)) for sublist in conditions_list]
     df4c = df[columns]
     df4c = df4c[(df4c.T != 0).any()]  # delete rows being zero everywhere
     df4c = df4c.dropna(axis=0, how='all')
-    df4c = helpers.countnan_samples(df4c, comparisons)
-    df4c = distance_or_overlap(df4c, comparisons)
-    df4c = compute_span_incomparison(df4c, comparisons)
+    df4c = helpers.countnan_samples(df4c, this_comparison)
+    df4c = distance_or_overlap(df4c, this_comparison)
+    df4c = compute_span_incomparison(df4c, this_comparison)
     df4c['distance/span'] = df4c.distance.div(df4c.span_allsamples)
-    ratiosdf = helpers.calculate_gmean(df4c, comparisons)
-    ratiosdf, df_bad = separate_before_stats(ratiosdf)
+    df4c = helpers.calculate_gmean(df4c, this_comparison)
+    df_good, df_bad = select_rows_with_sufficient_non_nan_values(df4c)
 
     if test == "disfit":
-        opdf = f"{prefix}--{co}--{suffix}-{strcontrast}_fitdist_plot.pdf"
-        out_histo_file = f"{out_dir}/extended/{opdf}"
-        ratiosdf = steps_fitting_method(ratiosdf, out_histo_file)
+        # opdf = f"{prefix}--{co}--{suffix}-{strcontrast}_fitdist_plot.pdf"
+        # out_histo_file = f"{out_dir}/extended/{opdf}"
+        df_good = steps_fitting_method(df_good, dataset, cfg)
     else:
-        result_test_df = run_statistical_test(ratiosdf, metad4c,
-                                              contrast, whichtest)
+        result_test_df = run_statistical_test(df_good, dataset, cfg, this_comparison, test)
+        assert(result_test_df.shape[0] == df_good.shape[0])
         result_test_df.set_index("metabolite", inplace=True)
-        ratiosdf = pd.merge(ratiosdf, result_test_df,
+        df_good = pd.merge(df_good, result_test_df,
                             left_index=True, right_index=True)
 
-    ratiosdf["log2FC"] = np.log2(ratiosdf['FC'])
+    df_good["log2FC"] = np.log2(df_good['gmean_ratio']) # was "FC"
 
-    ratiosdf, df_no_padj = separate_before_compute_padj(
-        ratiosdf,
-        args.qualityDistanceOverSpan)
-    ratiosdf = compute_padj_version2(ratiosdf, 0.05,
-                                     args.multitest_correction)
+    df_good, df_no_padj = helpers.split_rows_by_threshold(df_good, 'distance/span',
+                                                            cfg.analysis.method.qualityDistanceOverSpan)
+    df_good = compute_padj_version2(df_good, 0.05,
+                                     cfg.analysis.method.correction_method)
 
     # re-integrate the "bad" sub-dataframes to the full dataframe
-    df_bad = complete_columns_for_bad(df_bad, ratiosdf)
-    df_no_padj = complete_columns_for_bad(df_no_padj, ratiosdf)
-    ratiosdf = pd.concat([ratiosdf, df_no_padj])
-    if df_bad.shape[0] >= 1:
-        ratiosdf = pd.concat([ratiosdf, df_bad])
+    result = helpers.concatenate_dataframes(df_good, df_bad, df_no_padj)
+    return result
 
-    ratiosdf["compartment"] = co
-    ratiosdf = reorder_columns_diff_end(ratiosdf)
-    ratiosdf = ratiosdf.sort_values(['padj', 'distance/span'],
-                                    ascending=[True, False])
-    otsv = f"{prefix}--{co}--{suffix}-{strcontrast}-{whichtest}.tsv"
-    ratiosdf.to_csv(
-        f"{out_dir}/extended/{otsv}",
-        index_label="metabolite", header=True, sep='\t')
-    # filtered by thresholds :
-    filtered_df = filter_diff_results(
-        ratiosdf,
-        confidic['thresholds']['padj'],
-        confidic['thresholds']['absolute_log2FC'])
-    otv = f'{prefix}--{co}--{suffix}-{strcontrast}-{whichtest}_filter.tsv'
-    filtered_df.to_csv(f"{out_dir}/filtered/{otv}",
-                       index_label="metabolite",
-                       header=True, sep='\t')
 
 
 def run_multiclass(measurements: pd.DataFrame, metadatadf: pd.DataFrame,
@@ -787,7 +711,7 @@ def run_time_course(measurements: pd.DataFrame,
             df4c = compute_span_incomparison(df4c, metad4c, contrast)
             df4c['distance/span'] = df4c.distance.div(df4c.span_allsamples)
             ratiosdf = calc_ratios(df4c, metad4c, contrast)
-            ratiosdf, df_bad = separate_before_stats(ratiosdf)
+            ratiosdf, df_bad = select_rows_with_sufficient_non_nan_values(ratiosdf)
 
             result_test_df = run_statistical_test(ratiosdf, metad4c,
                                                   contrast, whichtest)
@@ -891,18 +815,26 @@ def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, c
         val_instead_zero = helpers.arg_repl_zero2value(impute_value, compartemantalized_df)
         df = compartemantalized_df.replace(to_replace=0, value=val_instead_zero)
 
-        # out_file_elems = {'modedir': modes_specs[mode]['dir'],
-        #                   'prefix': table_prefix,
-        #                   'co': c,
-        #                   'suffix': suffix}
-        #
-        # multiclass_andor_timecourse_andor_diff2groups(
-        #     measurements, meta_co, out_file_elems,
-        #     confidic, modes_specs, mode, args)
-
         for comparison in cfg.analysis.method.comparisons:
             if cfg.analysis.method.comparison_mode == 'pairwise':
-                pairwise_comparison(df, dataset, cfg, comparison, test)
+                result = pairwise_comparison(df, dataset, cfg, comparison, test)
+                result["compartment"] = compartment
+                result = reorder_columns_diff_end(result)
+                result = result.sort_values(['padj', 'distance/span'],
+                                             ascending=[True, False])
+                otsv = f"{prefix}--{co}--{suffix}-{strcontrast}-{whichtest}.tsv"
+                result.to_csv(
+                    f"{out_dir}/extended/{otsv}",
+                    index_label="metabolite", header=True, sep='\t')
+                # filtered by thresholds :
+                filtered_df = filter_diff_results(
+                    result,
+                    confidic['thresholds']['padj'],
+                    confidic['thresholds']['absolute_log2FC'])
+                otv = f'{prefix}--{co}--{suffix}-{strcontrast}-{whichtest}_filter.tsv'
+                filtered_df.to_csv(f"{out_dir}/filtered/{otv}",
+                                   index_label="metabolite",
+                                   header=True, sep='\t')
 
 def pass_confidic_timecourse_multiclass_to_arg(confidic, args):
     if (args.time_course != 'none') and ('time_course' in confidic.keys()):

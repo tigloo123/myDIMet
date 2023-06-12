@@ -26,6 +26,10 @@ correction_methods = ['bonferroni', 'sidak', 'holm-sidak', 'holm',
                       'simes-hochberg', 'hommel', 'fdr_bh', 'fdr_by',
                       'fdr_tsbh', 'fdr_tsbky']
 
+correction_methods_type = Literal['bonferroni', 'sidak', 'holm-sidak', 'holm',
+                        'simes-hochberg', 'hommel', 'fdr_bh', 'fdr_by',
+                        'fdr_tsbh', 'fdr_tsbky']
+
 comparison_modes = ["paiwise", "multigroup"]
 
 comparison_modes_types = Literal["paiwise", "multigroup"]

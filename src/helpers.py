@@ -20,6 +20,36 @@ from functools import reduce
 
 from constants import assert_literal, overlap_methods_types
 
+def concatenate_dataframes(df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame) -> pd.DataFrame:
+    '''
+    Concatenate df2 and df2 to df1 ; fill the missing values with np.nan
+    '''
+    assert(set(df2.columns).issubset(set(df1.columns)))
+    assert (set(df3.columns).issubset(set(df1.columns)))
+    df2 = df2.reindex(columns=df1.columns, fill_value=np.nan)
+    df3 = df3.reindex(columns=df1.columns, fill_value=np.nan)
+    result = pd.concat([df1, df2, df3], ignore_index=True)
+    return result
+
+def split_rows_by_threshold(df: pd.DataFrame, column_name: str,
+                            threshold: float) -> (pd.DataFrame, pd.DataFrame):
+    '''
+    Splits the dataframe into rows having column_name value >= threshold and the rest
+    Returns two dataframes
+    '''
+    try:
+        good_df = df.loc[df[column_name] >= threshold, :]
+        undesired_rows = set(df.index) - set(good_df.index)
+        bad_df = df.loc[list(undesired_rows)]
+    except Exception as e:
+        print(e)
+        print("Error in split_rows_by_threshold",
+              " check qualityDistanceOverSpan parameter in the analysis YAML file")
+
+    return good_df, bad_df
+
+
+
 def calculate_gmean(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
     """
     Calculates the geometric mean for each row in the specified column groups and adds the corresponding values

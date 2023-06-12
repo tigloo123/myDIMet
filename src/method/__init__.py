@@ -98,37 +98,3 @@ class DifferentialAnalysis(Method):
             #perform_tests(mode, clean_tables_path, fraccon_tab_prefix,
             #              metadatadf, confidic, args)
 
-    # # 1- abund
-    # if args.abundances:
-    #     print("processing abundances")
-    #     mode = "abund"
-    #     abund_tab_prefix = confidic['name_abundance']
-    #     perform_tests(mode, clean_tables_path, abund_tab_prefix,
-    #                   metadatadf, confidic, args)
-    #
-    # # 2- ME or FC
-    # if args.meanEnrich_or_fracContrib:
-    #     print("processing mean enrichment or fractional contributions")
-    #     mode = "mefc"
-    #     fraccon_tab_prefix = confidic['name_meanE_or_fracContrib']
-    #     perform_tests(mode, clean_tables_path, fraccon_tab_prefix,
-    #                   metadatadf, confidic, args)
-    #
-    # # 3- isotopologues
-    # if args.isotopologues:
-    #     mode = "isoabsol"
-    #     isos_abs_tab_prefix = confidic['name_isotopologue_abs']
-    #     isos_prop_tab_prefix = confidic['name_isotopologue_prop']
-    #     if (isos_abs_tab_prefix is not np.nan) and \
-    #             (isos_abs_tab_prefix != "None") and \
-    #             (isos_abs_tab_prefix is not None):
-    #         print("processing absolute isotopologues")
-    #         perform_tests(mode, clean_tables_path, isos_abs_tab_prefix,
-    #                       metadatadf, confidic, args)
-    #     else:
-    #         print("processing isotopologues (values given as proportions)")
-    #         mode = "isoprop"
-    #         perform_tests(mode, clean_tables_path, isos_prop_tab_prefix,
-    #                       metadatadf, confidic, args)
-
-#    print("end")
