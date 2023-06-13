@@ -8,7 +8,8 @@ from unittest import TestCase
 import pandas as pd
 import numpy as np
 import helpers
-
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 class TestHelpers(TestCase):
     def test_df_to_dict_bycomp(self):

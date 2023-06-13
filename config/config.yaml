@@ -6,20 +6,12 @@ hydra:
 
 # check https://hydra.cc/docs/patterns/specializing_config/ for more info about this
 defaults:
-  - analysis: example_diff_abundance_plot
+  - analysis: synthetic_abundance_plot
   - _self_
 
 figure_path: figures
 table_path : tables
 suffix : cyc1
-
-## metabolites to plot:
-#metabolites_to_plot:
-#  cell: ["Fructose_1,6-bisphosphate", # in "quotes" because has a comma inside
-#         L-Lactic_acid, Pyruvic_acid, L-Malic_acid,
-#         Fumaric_acid, L-Alanine, L-Glutamic_acid,
-#         L-Glutamine, L-Aspartic_acid]
-#  med:  [L-Lactic_acid, Pyruvic_acid, L-Alanine, L-Asparagine]
 
 # Isotopologue Contribution plot configuration
 # -----------------------------
@@ -27,19 +19,5 @@ width_each_stack : !!float 3
 wspace_stacks : !!float 1.1
 numbers_size : 13
 
-# Fractional Contributions lineplot configuration
-# -----------------------------
-# will run with defaults, see --help
-
-# grouping: column that is a combination of 2 metadata categories,
-# new category thus generated, is ready for comparison. Example :
-#  Control (a condition) combined with T0 (a timepoint), yields Control_T0
-#  L-Cyclo (another condition) combined with T0 (same timepoint) yields L-Cyclo_T0
-#  thus now, we are able to compare L-Cyclo_T0 against Control_T0 .
-
-# -------------------- end of config file ---------------------
-# NOTE: Metabolograms need a separated configuration file
-
-# Added
 palette: pastel
 x_text: ''

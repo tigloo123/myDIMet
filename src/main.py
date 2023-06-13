@@ -6,7 +6,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from data import Dataset
 from method import Method
-from visualization.abundance_bars import run_steps_abund_bars
+from visualization.abundance_bars import run_plot_abundance_bars
 
 from data import make_dataset
 

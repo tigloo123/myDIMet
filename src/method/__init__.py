@@ -13,7 +13,7 @@ from pydantic import validator
 from pydantic import BaseModel as PydanticBaseModel
 
 from data import Dataset
-from visualization.abundance_bars import run_steps_abund_bars
+from visualization.abundance_bars import run_plot_abundance_bars
 from processing.differential_analysis import differential_comparison
 
 logger = logging.getLogger(__name__)
@@ -49,14 +49,12 @@ class DifferentialAnalysisConfig(MethodConfig):
     '''
     Sets default values or fills them from the method yaml file
     '''
-    comparison_mode:str
-    comparisons: ListConfig = [["Control", "Condition"]]  # for each pair, last must be control
-    correction_method:str
+
     grouping: ListConfig = ["condition", "timepoint"]
-    impute_values : Dict[str, Optional[str]]
-    qualityDistanceOverSpan:float
-    statistical_test : Dict[str, Optional[str]]
-    thresholds : Dict[str, Optional[float]]
+    qualityDistanceOverSpan: float
+    correction_method: str = "bonferroni"
+    impute_values: DictConfig
+
     def build(self) -> "DifferentialAnalysis":
         return DifferentialAnalysis(config=self)
 
@@ -80,7 +78,7 @@ class AbundancePlot(Method):
         abundances_file_name = cfg.analysis.dataset.abundances_file_name
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
         os.makedirs(out_plot_dir,exist_ok=True)
-        run_steps_abund_bars(
+        run_plot_abundance_bars(
             abundances_file_name,
             dataset,
             out_plot_dir,
@@ -96,7 +94,7 @@ class DifferentialAnalysis(Method):
         out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
         os.makedirs(out_table_dir, exist_ok=True)
 
-        for file_name, test in self.config.statistical_test.items():
+        for file_name, test in cfg.analysis.statistical_test.items():
             if test is None : continue
             logger.info(f"Running differential analysis on {file_name} using {test} test")
-            differential_comparison(file_name, dataset, cfg, test,out_table_dir=out_table_dir)
+            differential_comparison(file_name, dataset, cfg, test, out_table_dir=out_table_dir)

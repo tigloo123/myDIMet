@@ -11,22 +11,8 @@ comparison_mode : pairwise
 qualityDistanceOverSpan : -0.3
 correction_method : "bonferroni"
 
-comparisons :
-  - [[L-Cycloserine, T0], [Control, T0]]
-  - [[L-Cycloserine, T2h], [Control, T2h]]
-
-statistical_test:
-  abundances_file_name: prm-scipy
-  meanE_or_fracContrib_file_name: KW
-  isotopologue_abs_file_name:
-  isotopologue_prop_file_name:
-
 impute_values:
   abundances_file_name: "min"
-  meanE_or_fracContrib_file_name: "min/2"
-  isotopologue_abs_file_name:
-  isotopologue_prop_file_name:
-
-thresholds:
-  padj: 0.2
-  absolute_log2FC: 3
+  meanE_or_fracContrib_file_name: "min"
+  isotopologue_abs_file_name: "min"
+  isotopologue_prop_file_name: "min"

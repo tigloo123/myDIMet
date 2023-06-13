@@ -801,7 +801,7 @@ def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, c
         val_instead_zero = helpers.arg_repl_zero2value(impute_value, compartmentalized_df)
         df = compartmentalized_df.replace(to_replace=0, value=val_instead_zero)
 
-        for comparison in cfg.analysis.method.comparisons:
+        for comparison in cfg.analysis.comparisons:
             if cfg.analysis.method.comparison_mode == 'pairwise':
                 result = pairwise_comparison(df, dataset, cfg, comparison, test)
                 result["compartment"] = compartment
@@ -816,8 +816,8 @@ def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, c
                 # filtered by thresholds :
                 filtered_df = filter_diff_results(
                     result,
-                    cfg.analysis.method.thresholds.padj,
-                    cfg.analysis.method.thresholds.absolute_log2FC)
+                    cfg.analysis.thresholds.padj,
+                    cfg.analysis.thresholds.absolute_log2FC)
                 filtered_df.to_csv(os.path.join(out_table_dir, f"{base_file_name}_filter.tsv"),
                                    index_label="metabolite",
                                    header=True, sep='\t')

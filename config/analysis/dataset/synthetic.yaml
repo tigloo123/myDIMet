@@ -1,10 +1,10 @@
 # indicate that we want an instance of Dataset created for this config
 _target_: data.DatasetConfig
 
-label: example_diff
-name: I am example_diff
+label: synthetic
+name: I am a sythetic data example
 #if relative : within the data subfolder, if not, use an absolute path
-subfolder: example_diff
+subfolder: synthetic
 #within the data subfolder/raw
 metadata: metadata
 

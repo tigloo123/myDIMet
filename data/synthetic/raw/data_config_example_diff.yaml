@@ -1,5 +1,5 @@
 # -----------------------------------------
-# Config file for data used in example_diff
+# Config file for data used in synthetic
 #
 
 metadata_file_name : metadata.csv

@@ -50,7 +50,7 @@ def plot_abundance_bars(
         output_directory: str,
         axisx_labeltilt: int,
         wspace_subfigs: float,
-        analysis_confidic: Any) -> int:
+        cfg: DictConfig) -> int:
     selected_metabs = selected_metabolites
     sns.set_style({"font.family": "sans-serif",
                    "font.sans-serif": "Liberation Sans"})
@@ -69,7 +69,7 @@ def plot_abundance_bars(
             y="abundance",
             hue=str(hue_var),
             data=herep,
-            palette=analysis_confidic.palette,
+            palette=cfg.palette,
             alpha=1,
             edgecolor="black",
             errcolor="black",
@@ -84,7 +84,7 @@ def plot_abundance_bars(
                 y="abundance",
                 hue=str(hue_var),
                 data=herep,
-                palette=analysis_confidic.palette,
+                palette=cfg.palette,
                 dodge=True,
                 edgecolor="black",
                 linewidth=1.5,
@@ -97,8 +97,8 @@ def plot_abundance_bars(
 
         axs[il].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 
-        if analysis_confidic.x_text != "":
-            the_x_text = analysis_confidic.x_text
+        if cfg.x_text != "":
+            the_x_text = cfg.x_text
             try:
                 xticks_text_l = the_x_text.split(",")
                 axs[il].set_xticklabels(xticks_text_l)
@@ -132,10 +132,9 @@ def plot_abundance_bars(
     plt.legend(handles=thehandles, labels=thelabels, loc='upper right')
     plt.axis("off")
     plt.savefig(os.path.join(output_directory, "legend.pdf"), format="pdf")
-    return 0
 
 
-def run_steps_abund_bars(
+def run_plot_abundance_bars(
         table_prefix,
         dataset: Dataset,
         out_plot_dir,
@@ -144,8 +143,8 @@ def run_steps_abund_bars(
 
     # This has to migrate somewhere else than the top level configuration
     ##############################
-    time_sel = cfg.analysis.dataset.time_sel  # locate where it is used
-    selectedmetsD = cfg.analysis.dataset.metabolites_to_plot  # locate where it is used
+    time_sel = cfg.analysis.time_sel  # locate where it is used
+    selectedmetsD = cfg.analysis.metabolites_to_plot  # locate where it is used
     condilevels = cfg.analysis.dataset.conditions  # <= locate where it is used
 
     axisx_labeltilt = cfg.analysis.method.axisx_labeltilt
@@ -156,16 +155,10 @@ def run_steps_abund_bars(
     wspace_subfigs = cfg.analysis.method.wspace_subfigs
     ##############################
 
-    # data_path = analysis_confidic["data_path"]
-    # suffix = analysis_confidic['suffix']
-
     compartments = metadata_df['short_comp'].unique().tolist()
     # dynamically open the file based on prefix, compartment and suffix:
     for c in compartments:
         metadata_compartment_df: pd.DataFrame = metadata_df.loc[metadata_df['short_comp'] == c, :]
-        # the_folder = f'{data_path}/processed/'
-        # fn = f'{the_folder}{table_prefix}--{c}--{suffix}.tsv'
-        # abundance_df = pd.read_csv(fn, sep='\t', header=0, index_col=0)
         compartment_df = dataset.compartmentalized_dfs['abundances_file_name'][c]
         # metadata and abundances time of interest
         metada_sel = metadata_compartment_df.loc[metadata_compartment_df["timepoint"].isin(time_sel), :]
