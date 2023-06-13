@@ -15,7 +15,7 @@ comparisons :
   - [[L-Cycloserine, T2h], [Control, T2h]]
 
 statistical_test:
-  abundances_file_name: prm-scipy
+  abundances_file_name:  prm-scipy #disfit
   meanE_or_fracContrib_file_name: KW
   isotopologue_abs_file_name:
   isotopologue_prop_file_name:

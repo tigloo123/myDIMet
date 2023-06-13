@@ -14,11 +14,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def compute_z_score(df: pd.DataFrame) -> pd.DataFrame:
+def compute_z_score(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
     """
     Add one column with z-score of ratio already computed
     """
-    df = df.assign(zscore=stats.zscore(df["ratio"]))
+    df = df.assign(zscore=stats.zscore(df[column_name])) # was "ratio"
     return df
 
 

@@ -51,19 +51,18 @@ def plot_abundance_bars(
         axisx_labeltilt: int,
         wspace_subfigs: float,
         cfg: DictConfig) -> int:
-    selected_metabs = selected_metabolites
     # TODO find a way to have these fonts on Mac OS,
     # in the meantime, use the default font to avoid [WARNING] - findfont: Generic family
     # sns.set_style({"font.family": "sans-serif",
     #                "font.sans-serif": "Liberation Sans"})
     plt.rcParams.update({"font.size": 21})
     YLABE = "Abundance"
-    fig, axs = plt.subplots(1, len(selected_metabs),
+    fig, axs = plt.subplots(1, len(selected_metabolites),
                             sharey=False, figsize=(plotwidth, 5.5))
 
-    for il in range(len(selected_metabs)):
+    for il in range(len(selected_metabolites)):
         herep = piled_sel_df.loc[
-                piled_sel_df["metabolite"] == selected_metabs[il], :]
+                piled_sel_df["metabolite"] == selected_metabolites[il], :]
         herep = herep.reset_index()
         sns.barplot(
             ax=axs[il],
@@ -107,7 +106,7 @@ def plot_abundance_bars(
             except Exception as e:
                 print(e, "The argument x_text is incorrectly set, see help")
 
-        axs[il].set(title=" " + selected_metabs[il] + "\n")
+        axs[il].set(title=" " + selected_metabolites[il] + "\n")
         axs[il].set(ylabel="")
         axs[il].set(xlabel="")
         sns.despine(ax=axs[il])
@@ -115,7 +114,7 @@ def plot_abundance_bars(
         axs[il].set_ylim(bottom=0)  # set minimal val display : y axis : 0
 
     thehandles, thelabels = axs[-1].get_legend_handles_labels()
-    for il in range(len(selected_metabs)):
+    for il in range(len(selected_metabolites)):
         axs[il].legend_.remove()
 
     plt.subplots_adjust(left=0.2, top=0.76, bottom=0.2,
@@ -134,10 +133,9 @@ def plot_abundance_bars(
     plt.legend(handles=thehandles, labels=thelabels, loc='upper right')
     plt.axis("off")
     plt.savefig(os.path.join(output_directory, "legend.pdf"), format="pdf")
-
+    logger.info(f"Saved abundance plot in {output_path}")
 
 def run_plot_abundance_bars(
-        table_prefix,
         dataset: Dataset,
         out_plot_dir,
         cfg: DictConfig) -> None:
@@ -176,7 +174,7 @@ def run_plot_abundance_bars(
         plotwidth = width_each_subfig * len(selectedmetsD[c])
 
         plot_abundance_bars(piled_sel, selectedmetsD[c], c,
-                            "total abundance",
+                            "total_abundance",
                             axisx_var, hue_var, plotwidth,
                             out_plot_dir, axisx_labeltilt,
                             wspace_subfigs, cfg)

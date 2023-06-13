@@ -4,8 +4,6 @@ import sys
 from pathlib import Path
 from typing import Optional, List, Literal, Set, Any, Dict
 
-import hydra
-import pandas as pd
 from omegaconf import DictConfig, OmegaConf, ListConfig
 from omegaconf.errors import ConfigAttributeError
 
@@ -19,6 +17,7 @@ from data import Dataset
 from helpers import flatten
 from visualization.abundance_bars import run_plot_abundance_bars
 from processing.differential_analysis import differential_comparison
+from visualization.abundance_bars import run_plot_abundance_bars
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +62,6 @@ class DifferentialAnalysisConfig(MethodConfig):
     def build(self) -> "DifferentialAnalysis":
         return DifferentialAnalysis(config=self)
 
-
 class Method(BaseModel):
     config: MethodConfig
 
@@ -83,15 +81,9 @@ class AbundancePlot(Method):
         logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
         logger.info("Will plot the abundance plot, with the following config: %s", self.config)
         dataset.load_compartmentalized_data(suffix=cfg.suffix)
-        abundances_file_name = cfg.analysis.dataset.abundances_file_name
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
-        os.makedirs(out_plot_dir, exist_ok=True)
-        run_plot_abundance_bars(
-            abundances_file_name,
-            dataset,
-            out_plot_dir,
-            cfg)
-
+        os.makedirs(out_plot_dir,exist_ok=True)
+        run_plot_abundance_bars(dataset, out_plot_dir, cfg)
 
 class DifferentialAnalysis(Method):
     config: DifferentialAnalysisConfig
@@ -105,8 +97,8 @@ class DifferentialAnalysis(Method):
         os.makedirs(out_table_dir, exist_ok=True)
         self.check_expectations(cfg, dataset)
         for file_name, test in cfg.analysis.statistical_test.items():
-            if test is None: continue
-            logger.info(f"Running differential analysis on {file_name} using {test} test")
+            if test is None : continue
+            logger.info(f"Running differential analysis using {test} test")
             differential_comparison(file_name, dataset, cfg, test, out_table_dir=out_table_dir)
 
     def check_expectations(self, cfg, dataset):
