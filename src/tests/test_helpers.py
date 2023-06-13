@@ -5,11 +5,11 @@
 """
 
 from unittest import TestCase
+
 import pandas as pd
-import numpy as np
+
 import helpers
-import matplotlib.pyplot as plt
-import seaborn as sns
+
 
 class TestHelpers(TestCase):
     def test_df_to_dict_bycomp(self):
@@ -70,4 +70,3 @@ class TestHelpers(TestCase):
 
         self.assertTrue(all(result["C"] == [7.0, 8.0, 9.0, -1.0, -1.0, -1.0, 19.0, 20.0, 21.0]))
         self.assertTrue(all(result["A"] == [1.0, 2.0, 3.0, 10.0, 11.0, 12.0, -1.0, -1.,0 -1.0]))
-
