@@ -6,8 +6,9 @@ hydra:
 
 # check https://hydra.cc/docs/patterns/specializing_config/ for more info about this
 defaults:
-  - analysis: synthetic_abundance_plot
+#  - analysis: synthetic_abundance_plot
 #  - analysis: example_toy1_abundance_plot
+  - analysis: synthetic_differential_analysis
   - _self_
 
 figure_path: figures

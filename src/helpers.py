@@ -8,6 +8,7 @@ import os
 from typing import Dict, List
 
 from omegaconf import DictConfig
+from collections.abc import Iterable
 
 import constants
 import numpy as np
@@ -565,3 +566,11 @@ def dynamic_xposition_ylabeltext(plotwidth) -> float:
     if position_float < 0.01:
         position_float = 0.01
     return position_float
+
+
+def flatten(xs):
+    for x in xs:
+        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+            yield from flatten(x)
+        else:
+            yield x

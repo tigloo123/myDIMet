@@ -6,7 +6,7 @@ defaults:
 
 time_sel :
   - T0
-  - T24
+  - T2h
 
 comparison_mode: "pairwise"
 
