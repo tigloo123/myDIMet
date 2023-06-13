@@ -18,6 +18,7 @@ from processing.differential_analysis import differential_comparison
 
 logger = logging.getLogger(__name__)
 
+
 class BaseModel(PydanticBaseModel):
     class Config:
         arbitrary_types_allowed = True
@@ -58,6 +59,7 @@ class DifferentialAnalysisConfig(MethodConfig):
     def build(self) -> "DifferentialAnalysis":
         return DifferentialAnalysis(config=self)
 
+
 class Method(BaseModel):
     config: MethodConfig
 
@@ -68,8 +70,10 @@ class Method(BaseModel):
         logger.info("Not instantialted in the parent class.")
         raise NotImplementedError
 
+
 class AbundancePlot(Method):
     config: AbundancePlotConfig
+
     def run(self, cfg: DictConfig, dataset: Dataset) -> None:
         logger.info(f"The current working directory is {os.getcwd()}")
         logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
@@ -84,8 +88,10 @@ class AbundancePlot(Method):
             out_plot_dir,
             cfg)
 
+
 class DifferentialAnalysis(Method):
     config: DifferentialAnalysisConfig
+
     def run(self, cfg: DictConfig, dataset: Dataset) -> None:
         logger.info(f"The current working directory is {os.getcwd()}")
         logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))

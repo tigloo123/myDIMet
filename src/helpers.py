@@ -21,16 +21,18 @@ from functools import reduce
 
 from constants import assert_literal, overlap_methods_types
 
+
 def concatenate_dataframes(df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame) -> pd.DataFrame:
     '''
     Concatenate df2 and df2 to df1 ; fill the missing values with np.nan
     '''
-    assert(set(df2.columns).issubset(set(df1.columns)))
+    assert (set(df2.columns).issubset(set(df1.columns)))
     assert (set(df3.columns).issubset(set(df1.columns)))
     df2 = df2.reindex(columns=df1.columns, fill_value=np.nan)
     df3 = df3.reindex(columns=df1.columns, fill_value=np.nan)
     result = pd.concat([df1, df2, df3], ignore_index=True)
     return result
+
 
 def split_rows_by_threshold(df: pd.DataFrame, column_name: str,
                             threshold: float) -> (pd.DataFrame, pd.DataFrame):
@@ -48,7 +50,6 @@ def split_rows_by_threshold(df: pd.DataFrame, column_name: str,
               " check qualityDistanceOverSpan parameter in the analysis YAML file")
 
     return good_df, bad_df
-
 
 
 def calculate_gmean(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
@@ -91,11 +92,12 @@ def select_rows_by_fixed_values(df, columns, values):
             masks.append(df[column] == value)
         # Combine the masks using logical AND
         mask = reduce(lambda x, y: x & y, masks)
-        first_column_values_list.append(list(df[mask].iloc[:,0]))
+        first_column_values_list.append(list(df[mask].iloc[:, 0]))
 
     return first_column_values_list
 
-def zero_repl_arg(zero_repl_arg: str) -> None: # TODO: this has to be cleaned up
+
+def zero_repl_arg(zero_repl_arg: str) -> None:  # TODO: this has to be cleaned up
     '''
      zero_repl_arg is a string representing the argument for replacing zero values (e.g. "min/2").
      The result is a dictionary of replacement arguments.
@@ -113,7 +115,7 @@ def zero_repl_arg(zero_repl_arg: str) -> None: # TODO: this has to be cleaned up
                 raise ValueError(err_msg)
 
         def foo(x, n):
-            return min(x)/n
+            return min(x) / n
 
     else:
         try:
@@ -127,6 +129,7 @@ def zero_repl_arg(zero_repl_arg: str) -> None: # TODO: this has to be cleaned up
 
     return {'repZero': foo, 'n': n}
 
+
 def arg_repl_zero2value(argum_zero_rep: str, df: pd.DataFrame) -> float:
     '''
     Applies the repZero function to the DataFrame df where the values are greater than 0.
@@ -134,10 +137,11 @@ def arg_repl_zero2value(argum_zero_rep: str, df: pd.DataFrame) -> float:
     WARNING: only authorised values are (min | min/n | VALUE) (default: min)
     '''
     d = zero_repl_arg(argum_zero_rep)
-    repZero = d['repZero'] #argum_zero_rep['repZero']
-    n = d['n'] #argum_zero_rep['n']
+    repZero = d['repZero']  # argum_zero_rep['repZero']
+    n = d['n']  # argum_zero_rep['n']
     replacement = repZero(df[df > 0].apply(repZero, n=1), n=n)
     return replacement
+
 
 def overlap_symmetric(x: np.array, y: np.array) -> int:
     a = [np.nanmin(x), np.nanmax(x)]
@@ -155,17 +159,19 @@ def overlap_asymmetric(x: np.array, y: np.array) -> int:
     overlap = np.nanmin(y) - np.nanmax(x)
     return overlap
 
+
 def compute_distance_between_intervals(group1: np.array, group2: np.array,
                                        overlap_method: str) -> pd.DataFrame:
     """
         computes the distance between intervals provided in group1 and group2
     """
-    assert_literal(overlap_method, overlap_methods_types)
+    assert_literal(overlap_method, overlap_methods_types, "overlap method : ")
 
     if overlap_method == "symmetric":
         return overlap_symmetric(group1, group2)
     else:
         return overlap_asymmetric(group1, group2)
+
 
 def df_to_dict_by_compartment(df: pd.DataFrame, metadata: pd.DataFrame) -> dict:
     '''
@@ -177,6 +183,7 @@ def df_to_dict_by_compartment(df: pd.DataFrame, metadata: pd.DataFrame) -> dict:
         df_co = df.loc[:, metada_co['original_name']]
         output_dict[compartment] = df_co
     return output_dict
+
 
 def check_dict_has_keys(d: dict, expected_keys: list) -> np.array:
     has_key = []
@@ -193,7 +200,7 @@ def check_dict_has_known_values(d: dict, possible_values: list) -> np.array:
 
 
 def auto_check_validity_configuration_file(confidic) -> None:
-    expected_keys = constants.data_files_keys#  + ['conditions', 'suffix']
+    expected_keys = constants.data_files_keys  # + ['conditions', 'suffix']
     has_key = check_dict_has_keys(confidic, expected_keys)
     missing_keys = np.array(expected_keys)[~has_key].tolist()
     assert all(has_key), f"{missing_keys} : missing in configuration file! "
@@ -216,7 +223,7 @@ def verify_good_extensions_measures(confidic) -> None:
             raise ValueError("Error : your files must be .csv, not .txt/TXT")
         elif lc.endswith(".xlsx"):
             raise ValueError("Error : your files must be .csv",
-                  "Moreover : .xlsx files are not admitted !")
+                             "Moreover : .xlsx files are not admitted !")
 
 
 def remove_extensions_names_measures(confidic) -> dict:
@@ -234,9 +241,10 @@ def remove_extensions_names_measures(confidic) -> dict:
     return confidic
 
 
-def detect_and_create_dir(namenesteddir): # TODO : replace by os.makedirs(file_name, exist_ok = True)
+def detect_and_create_dir(namenesteddir):  # TODO : replace by os.makedirs(file_name, exist_ok = True)
     if not os.path.exists(namenesteddir):
         os.makedirs(namenesteddir)
+
 
 def open_metadata(file_path):
     try:
@@ -250,7 +258,7 @@ def open_metadata(file_path):
         raise ValueError("\nproblem opening configuration file")
 
 
-def verify_metadata_sample_not_duplicated(metadata_df : pd.DataFrame) -> None:
+def verify_metadata_sample_not_duplicated(metadata_df: pd.DataFrame) -> None:
     def yield_repeated_elems(mylist):
         occur_dic = dict(map(lambda x: (x, list(mylist).count(x)),
                              mylist))  # credits: w3resource.com
@@ -276,6 +284,7 @@ def isotopologues_meaning_df(isotopologues_full_list):
         xu["isotopologue_name"].append(ch)
     df = pd.DataFrame.from_dict(xu)
     return df
+
 
 import pandas as pd
 
@@ -459,7 +468,7 @@ def countnan_samples(df: pd.DataFrame, groups: List) -> pd.DataFrame:
 
     Only works if groups contains two sublists of column names
     """
-    assert(len(groups) == 2)
+    assert (len(groups) == 2)
     # vecout = []
     # grs = metad4c['newcol'].unique()
     # gr1 = metad4c.loc[metad4c['newcol'] == grs[0], 'name_to_plot']
@@ -476,7 +485,7 @@ def countnan_samples(df: pd.DataFrame, groups: List) -> pd.DataFrame:
     df['count_nan_samples_group1'] = df[groups[0]].isnull().sum(axis=1)
     df['count_nan_samples_group2'] = df[groups[1]].isnull().sum(axis=1)
 
-   # df['count_nan_samples'] = vecout
+    # df['count_nan_samples'] = vecout
     return df
 
 

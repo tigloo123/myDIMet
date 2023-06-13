@@ -19,8 +19,4 @@ conditions :
 metabolites_to_plot:
   endo: [Cit, Fru1P]
 
-time_sel :
-  - T0
-  - T24
-
 suffix : ldh1

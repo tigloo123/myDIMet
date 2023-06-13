@@ -793,8 +793,8 @@ def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, c
     Differential comparison is performed on compartemnatalized versions of data files
     Moreover, we replace zero values using the provided method
     '''
-    assert_literal(test, availtest_methods_type)
-    assert_literal(file_name, data_files_keys_type)
+    assert_literal(test, availtest_methods_type, 'Available test')
+    assert_literal(file_name, data_files_keys_type, 'file name')
 
     impute_value = cfg.analysis.method.impute_values[file_name]
     for compartment, compartmentalized_df in dataset.compartmentalized_dfs[file_name].items():
