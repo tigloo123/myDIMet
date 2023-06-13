@@ -8,3 +8,6 @@ time_sel :
 defaults:
   - dataset: toy1
   - method: abundance_plot
+
+metabolites_to_plot:
+  endo: [Cit, Fru1P]

@@ -8,7 +8,7 @@ subfolder: toy1
 #within the data subfolder/raw
 metadata: metadata_toy1
 
-abundance_file_name : AbundanceCorrected
+abundances_file_name : AbundanceCorrected
 meanE_or_fracContrib_file_name : MeanEnrichment13C
 isotopologue_prop_file_name : IsotopologuesProp # isotopologue proportions
 isotopologue_abs_file_name : IsotopologuesAbs  # isotopologue absolute values
@@ -16,7 +16,6 @@ isotopologue_abs_file_name : IsotopologuesAbs  # isotopologue absolute values
 conditions :
   - sgLDHA # first must be control, when several
 
-metabolites_to_plot:
-  endo: [Cit, Fru1P]
+
 
 suffix : ldh1

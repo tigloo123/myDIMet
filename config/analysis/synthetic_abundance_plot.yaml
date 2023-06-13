@@ -8,7 +8,7 @@ defaults:
 
 time_sel :
   - T0
-  - T24
+  - T2h
 
 ## metabolites to plot:
 metabolites_to_plot:
@@ -17,4 +17,3 @@ metabolites_to_plot:
          Fumaric_acid, L-Alanine, L-Glutamic_acid,
          L-Glutamine, L-Aspartic_acid]
   med:  [L-Lactic_acid, Pyruvic_acid, L-Alanine, L-Asparagine]
-

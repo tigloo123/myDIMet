@@ -14,6 +14,7 @@ isotopologue_prop_file_name : CorrectedIsotopologues # isotopologue proportions
 isotopologue_abs_file_name : IsotopologuesAbs  # isotopologue absolute values
 
 conditions :
-  - sgLDHA # first must be control, when several
+ - Control # first must be control
+ - L-Cycloserine
 
-suffix : ldh1
+suffix : cyc1

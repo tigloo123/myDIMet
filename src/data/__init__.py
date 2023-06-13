@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, List, Literal, Set, Dict
 
 import pandas as pd
+from omegaconf import ListConfig
 from pydantic import BaseModel as PydanticBaseModel
 
 
@@ -23,6 +24,9 @@ class DatasetConfig(BaseModel):
     # We allow for some default values for the following files
     # will be ignored if they do not exist
 
+    # First condition is the reference condition (control)
+    # Conditions should be a subset of the medata corresponding column
+    conditions: ListConfig
     abundances_file_name: str = "AbundanceCorrected"
     meanE_or_fracContrib_file_name: str = "MeanEnrichment13C"
     isotopologue_prop_file_name: str = "IsotopologuesProp"  # isotopologue proportions
@@ -79,6 +83,13 @@ class Dataset(BaseModel):
         logger.info("Loaded metadata: \n%s", self.metadata_df.head())
         logger.info("Finished loading raw dataset %s, available dataframes are : %s",
                     self.config.label, self.available_datasets)
+        self.check_expectations()
+
+    def check_expectations(self):
+        # conditions should be a subset of the metadata corresponding column
+        if not set(self.config.conditions).issubset(set(self.metadata_df['condition'].unique())):
+            logger.error("Conditions %s are not a subset of the metadata declared conditions", self.config.conditions)
+            raise ValueError(f"Conditions {self.config.conditions} are not a subset of the metadata declared conditions")
 
     def load_compartmentalized_data(self, suffix) -> pd.DataFrame:
         compartments = self.metadata_df['short_comp'].unique().tolist()
