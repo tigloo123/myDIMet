@@ -23,46 +23,41 @@ cs = ConfigStore.instance()
 def pile_up_abundance(abu_sel, metada_sel):
     dfcompartment = abu_sel.T
     metabolites = dfcompartment.columns
-    dfcompartment['name_to_plot'] = dfcompartment.index
-    dfcompartment = pd.merge(dfcompartment, metada_sel, on='name_to_plot')
-    dafull = pd.DataFrame(columns=["timepoint", "condition",
-                                   "metabolite", "abundance"])
+    dfcompartment["name_to_plot"] = dfcompartment.index
+    dfcompartment = pd.merge(dfcompartment, metada_sel, on="name_to_plot")
+    dafull = pd.DataFrame(columns=["timepoint", "condition", "metabolite", "abundance"])
     for z in range(len(metabolites)):
-        subdf = dfcompartment.loc[:,
-                [metabolites[z], "timepoint", "condition"]]
+        subdf = dfcompartment.loc[:, [metabolites[z], "timepoint", "condition"]]
         subdf["metabolite"] = metabolites[z]
         subdf["abundance"] = subdf[metabolites[z]]
         subdf = subdf.drop(columns=[metabolites[z]])
-        dafull = pd.concat(
-            [dafull, subdf], ignore_index=True
-        )
+        dafull = pd.concat([dafull, subdf], ignore_index=True)
     return dafull
 
 
 def plot_abundance_bars(
-        piled_sel_df: pd.DataFrame,
-        selected_metabolites: List[str],
-        CO: str,
-        SMX: str,
-        axisx_var: str,
-        hue_var: str,
-        plotwidth: float,
-        output_directory: str,
-        axisx_labeltilt: int,
-        wspace_subfigs: float,
-        cfg: DictConfig) -> int:
-    #TODO find a way to have these fonts on Mac OS,
+    piled_sel_df: pd.DataFrame,
+    selected_metabolites: List[str],
+    CO: str,
+    SMX: str,
+    axisx_var: str,
+    hue_var: str,
+    plotwidth: float,
+    output_directory: str,
+    axisx_labeltilt: int,
+    wspace_subfigs: float,
+    cfg: DictConfig,
+) -> int:
+    # TODO find a way to have these fonts on Mac OS,
     # in the meantime, use the default font to avoid [WARNING] - findfont: Generic family
     # sns.set_style({"font.family": "sans-serif",
     #                "font.sans-serif": "Liberation Sans"})
     plt.rcParams.update({"font.size": 21})
     YLABE = "Abundance"
-    fig, axs = plt.subplots(1, len(selected_metabolites),
-                            sharey=False, figsize=(plotwidth, 5.5))
+    fig, axs = plt.subplots(1, len(selected_metabolites), sharey=False, figsize=(plotwidth, 5.5))
 
     for il in range(len(selected_metabolites)):
-        herep = piled_sel_df.loc[
-                piled_sel_df["metabolite"] == selected_metabolites[il], :]
+        herep = piled_sel_df.loc[piled_sel_df["metabolite"] == selected_metabolites[il], :]
         herep = herep.reset_index()
         sns.barplot(
             ax=axs[il],
@@ -76,7 +71,7 @@ def plot_abundance_bars(
             errcolor="black",
             errwidth=1.7,
             # errorbar='sd',
-            capsize=0.12
+            capsize=0.12,
         )
         try:
             sns.stripplot(
@@ -89,7 +84,7 @@ def plot_abundance_bars(
                 dodge=True,
                 edgecolor="black",
                 linewidth=1.5,
-                alpha=1
+                alpha=1,
             )
         except Exception as e:
             # When Nan it throws error, avoid it
@@ -117,33 +112,30 @@ def plot_abundance_bars(
     for il in range(len(selected_metabolites)):
         axs[il].legend_.remove()
 
-    plt.subplots_adjust(left=0.2, top=0.76, bottom=0.2,
-                        wspace=wspace_subfigs, hspace=1)
+    plt.subplots_adjust(left=0.2, top=0.76, bottom=0.2, wspace=wspace_subfigs, hspace=1)
 
     # plt.tight_layout(pad = 0.01, w_pad = -2, h_pad=0.1)
 
-    fig.text(x=dynamic_xposition_ylabeltext(plotwidth),
-             y=0.5, s=YLABE,
-             va="center", rotation="vertical", size=26)
+    fig.text(x=dynamic_xposition_ylabeltext(plotwidth), y=0.5, s=YLABE, va="center", rotation="vertical", size=26)
     # fig.suptitle(f"{CO} ({SMX} abundance)".upper())
     output_path = os.path.join(output_directory, f"bars_{CO}_{SMX}.pdf")
     plt.savefig(output_path, bbox_inches="tight", format="pdf")
     plt.close()
     plt.figure()
-    plt.legend(handles=thehandles, labels=thelabels, loc='upper right')
+    plt.legend(handles=thehandles, labels=thelabels, loc="upper right")
     plt.axis("off")
     plt.savefig(os.path.join(output_directory, "legend.pdf"), format="pdf")
     logger.info(f"Saved abundance plot in {output_path}")
 
-def run_plot_abundance_bars(
-        dataset: Dataset,
-        out_plot_dir,
-        cfg: DictConfig) -> None:
+
+def run_plot_abundance_bars(dataset: Dataset, out_plot_dir, cfg: DictConfig) -> None:
     metadata_df = dataset.metadata_df
 
     ##############################
     time_sel = cfg.analysis.time_sel  # locate where it is used
-    metabolites_to_plot = cfg.analysis.metabolites_to_plot  # will define which metabolites are plotted in the abundance plot
+    metabolites_to_plot = (
+        cfg.analysis.metabolites_to_plot
+    )  # will define which metabolites are plotted in the abundance plot
     conditions = cfg.analysis.dataset.conditions  # <= locate where it is used
 
     axisx_labeltilt = cfg.analysis.method.axisx_labeltilt
@@ -154,25 +146,31 @@ def run_plot_abundance_bars(
     wspace_subfigs = cfg.analysis.method.wspace_subfigs
     ##############################
 
-    compartments = metadata_df['short_comp'].unique().tolist()
+    compartments = metadata_df["short_comp"].unique().tolist()
     for c in compartments:
-        metadata_compartment_df: pd.DataFrame = metadata_df.loc[metadata_df['short_comp'] == c, :]
-        compartment_df = dataset.compartmentalized_dfs['abundances_file_name'][c]
+        metadata_compartment_df: pd.DataFrame = metadata_df.loc[metadata_df["short_comp"] == c, :]
+        compartment_df = dataset.compartmentalized_dfs["abundances_file_name"][c]
         # metadata and abundances time of interest
         metada_sel = metadata_compartment_df.loc[metadata_compartment_df["timepoint"].isin(time_sel), :]
-        abu_sel = compartment_df[metada_sel['name_to_plot']]
+        abu_sel = compartment_df[metada_sel["name_to_plot"]]
 
         # total piled-up data:
         piled_sel = pile_up_abundance(abu_sel, metada_sel)
-        piled_sel["condition"] = pd.Categorical(
-            piled_sel["condition"], conditions)
-        piled_sel["timepoint"] = pd.Categorical(
-            piled_sel["timepoint"], time_sel)
+        piled_sel["condition"] = pd.Categorical(piled_sel["condition"], conditions)
+        piled_sel["timepoint"] = pd.Categorical(piled_sel["timepoint"], time_sel)
 
         plotwidth = width_each_subfig * len(metabolites_to_plot[c])
 
-        plot_abundance_bars(piled_sel, metabolites_to_plot[c], c,
-                            "total_abundance",
-                            axisx_var, hue_var, plotwidth,
-                            out_plot_dir, axisx_labeltilt,
-                            wspace_subfigs, cfg)
+        plot_abundance_bars(
+            piled_sel,
+            metabolites_to_plot[c],
+            c,
+            "total_abundance",
+            axisx_var,
+            hue_var,
+            plotwidth,
+            out_plot_dir,
+            axisx_labeltilt,
+            wspace_subfigs,
+            cfg,
+        )

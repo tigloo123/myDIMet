@@ -10,25 +10,40 @@ def assert_literal(value: str, lit_type, check: Optional[str] = None):
     assert value in get_args(lit_type), (check if check else "") + f"Value {value} is not in {lit_type}"
 
 
-data_files_keys = ['abundances_file_name', 'meanE_or_fracContrib_file_name',
-                   'isotopologue_prop_file_name', 'isotopologue_abs_file_name']
+data_files_keys = [
+    "abundances_file_name",
+    "meanE_or_fracContrib_file_name",
+    "isotopologue_prop_file_name",
+    "isotopologue_abs_file_name",
+]
 
-data_files_keys_type = Literal['abundances_file_name', 'meanE_or_fracContrib_file_name',
-'isotopologue_prop_file_name', 'isotopologue_abs_file_name']
+data_files_keys_type = Literal[
+    "abundances_file_name",
+    "meanE_or_fracContrib_file_name",
+    "isotopologue_prop_file_name",
+    "isotopologue_abs_file_name",
+]
 
-availtest_methods = ['MW', 'KW', 'ranksum', 'Wcox', 'Tt', 'BrMu',
-                     'prm-scipy', 'disfit', 'none']
+availtest_methods = ["MW", "KW", "ranksum", "Wcox", "Tt", "BrMu", "prm-scipy", "disfit", "none"]
 
-availtest_methods_type = Literal['MW', 'KW', 'ranksum', 'Wcox', 'Tt', 'BrMu',
-'prm-scipy', 'disfit', 'none']
+availtest_methods_type = Literal["MW", "KW", "ranksum", "Wcox", "Tt", "BrMu", "prm-scipy", "disfit", "none"]
 
-correction_methods = ['bonferroni', 'sidak', 'holm-sidak', 'holm',
-                      'simes-hochberg', 'hommel', 'fdr_bh', 'fdr_by',
-                      'fdr_tsbh', 'fdr_tsbky']
+correction_methods = [
+    "bonferroni",
+    "sidak",
+    "holm-sidak",
+    "holm",
+    "simes-hochberg",
+    "hommel",
+    "fdr_bh",
+    "fdr_by",
+    "fdr_tsbh",
+    "fdr_tsbky",
+]
 
-correction_methods_type = Literal['bonferroni', 'sidak', 'holm-sidak', 'holm',
-'simes-hochberg', 'hommel', 'fdr_bh', 'fdr_by',
-'fdr_tsbh', 'fdr_tsbky']
+correction_methods_type = Literal[
+    "bonferroni", "sidak", "holm-sidak", "holm", "simes-hochberg", "hommel", "fdr_bh", "fdr_by", "fdr_tsbh", "fdr_tsbky"
+]
 
 comparison_modes = ["pairwise", "multigroup"]
 

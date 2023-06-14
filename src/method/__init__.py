@@ -36,9 +36,10 @@ class MethodConfig(BaseModel):
 
 
 class AbundancePlotConfig(MethodConfig):
-    '''
+    """
     Sets default values or fills them from the method yaml file
-    '''
+    """
+
     barcolor: str = "timepoint"
     axisx: str = "condition"
     axisx_labeltilt: int = 20  # 0 is no tilt
@@ -50,9 +51,9 @@ class AbundancePlotConfig(MethodConfig):
 
 
 class DifferentialAnalysisConfig(MethodConfig):
-    '''
+    """
     Sets default values or fills them from the method yaml file
-    '''
+    """
 
     grouping: ListConfig = ["condition", "timepoint"]
     qualityDistanceOverSpan: float
@@ -61,6 +62,7 @@ class DifferentialAnalysisConfig(MethodConfig):
 
     def build(self) -> "DifferentialAnalysis":
         return DifferentialAnalysis(config=self)
+
 
 class Method(BaseModel):
     config: MethodConfig
@@ -81,15 +83,20 @@ class AbundancePlot(Method):
         dataset.load_compartmentalized_data(suffix=cfg.suffix)
         self.check_expectations(cfg, dataset)
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
-        os.makedirs(out_plot_dir,exist_ok=True)
+        os.makedirs(out_plot_dir, exist_ok=True)
         run_plot_abundance_bars(dataset, out_plot_dir, cfg)
+
     def check_expectations(self, cfg, dataset):
         # check that thresholds are provided in the config
         try:
-            if not set(cfg.analysis.metabolites_to_plot.keys()).issubset(dataset.metadata_df['short_comp']):
-                raise ValueError(f"[Analysis > Metabolites to plot > compartments] are missing from [Metadata > Compartments]")
-            if not set(cfg.analysis.time_sel).issubset(set(dataset.metadata_df['timepoint'])):
-                raise ValueError(f"[Analysis > Time sel] time points provided in the config file are not present in [Metadata > timepoint]")
+            if not set(cfg.analysis.metabolites_to_plot.keys()).issubset(dataset.metadata_df["short_comp"]):
+                raise ValueError(
+                    f"[Analysis > Metabolites to plot > compartments] are missing from [Metadata > Compartments]"
+                )
+            if not set(cfg.analysis.time_sel).issubset(set(dataset.metadata_df["timepoint"])):
+                raise ValueError(
+                    f"[Analysis > Time sel] time points provided in the config file are not present in [Metadata > timepoint]"
+                )
         except ConfigAttributeError as e:
             logger.error(f"Mandatory parameter not provided in the config file:{e}, aborting")
             sys.exit(1)
@@ -110,25 +117,34 @@ class DifferentialAnalysis(Method):
         os.makedirs(out_table_dir, exist_ok=True)
         self.check_expectations(cfg, dataset)
         for file_name, test in cfg.analysis.statistical_test.items():
-            if test is None : continue
+            if test is None:
+                continue
             logger.info(f"Running differential analysis of {dataset.get_file_for_label(file_name)} using {test} test")
             differential_comparison(file_name, dataset, cfg, test, out_table_dir=out_table_dir)
 
     def check_expectations(self, cfg, dataset):
         # check that thresholds are provided in the config
         try:
-            float(cfg.analysis.thresholds.padj) is not None and float(cfg.analysis.thresholds.absolute_log2FC) is not None
-            if not set(cfg.analysis.metabolites_to_plot.keys()).issubset(dataset.metadata_df['short_comp']):
-                raise ValueError(f"Comparisons > Conditions or timepoints provided in the config file {diff} are not present in the metadata file, aborting")
+            float(cfg.analysis.thresholds.padj) is not None and float(
+                cfg.analysis.thresholds.absolute_log2FC
+            ) is not None
+            if not set(cfg.analysis.metabolites_to_plot.keys()).issubset(dataset.metadata_df["short_comp"]):
+                raise ValueError(
+                    f"Comparisons > Conditions or timepoints provided in the config file {diff} are not present in the metadata file, aborting"
+                )
 
-            if not set(cfg.analysis.time_sel).issubset(set(dataset.metadata_df['timepoint'])):
-                raise ValueError(f"Timepoints provided in the config file are not present in the metadata file, aborting")
+            if not set(cfg.analysis.time_sel).issubset(set(dataset.metadata_df["timepoint"])):
+                raise ValueError(
+                    f"Timepoints provided in the config file are not present in the metadata file, aborting"
+                )
             # all values in the comparisons arrays of arrays are in the metadata, either as conditions or timepoints
-            conditions_and_tp = set(dataset.metadata_df['condition']).union(set(dataset.metadata_df['timepoint']))
+            conditions_and_tp = set(dataset.metadata_df["condition"]).union(set(dataset.metadata_df["timepoint"]))
             comparisons = set(flatten(cfg.analysis.comparisons))
             diff = comparisons.difference(conditions_and_tp)
             if not comparisons.issubset(conditions_and_tp):
-                raise ValueError(f"Comparisons > Conditions or timepoints provided in the config file {diff} are not present in the metadata file, aborting")
+                raise ValueError(
+                    f"Comparisons > Conditions or timepoints provided in the config file {diff} are not present in the metadata file, aborting"
+                )
             # comparison_mode is one of the constant values
             constants.assert_literal(cfg.analysis.comparison_mode, constants.comparison_modes_types, "comparison_mode")
         except ConfigAttributeError as e:

@@ -47,7 +47,9 @@ class Dataset(BaseModel):
     meanE_or_fracContrib_df: Optional[pd.DataFrame] = None
     isotopologue_prop_df: Optional[pd.DataFrame] = None
     isotopologue_abs_df: Optional[pd.DataFrame] = None
-    available_datasets: Set[Literal["metadata", "abundance", "meanE_or_fracContrib", "isotopologue_prop", "isotopologue_abs"]] = set()
+    available_datasets: Set[
+        Literal["metadata", "abundance", "meanE_or_fracContrib", "isotopologue_prop", "isotopologue_abs"]
+    ] = set()
     compartmentalized_dfs: Dict[str, Dict[str, pd.DataFrame]] = {}
 
     def preload(self):
@@ -61,15 +63,18 @@ class Dataset(BaseModel):
             logger.info("looking for data in %s", self.sub_folder_absolute)
         else:
             self.sub_folder_absolute = self.self.config.subfolder
-        self.raw_data_folder = os.path.join(self.sub_folder_absolute, 'raw')
-        self.processed_data_folder = os.path.join(self.sub_folder_absolute, 'processed')
+        self.raw_data_folder = os.path.join(self.sub_folder_absolute, "raw")
+        self.processed_data_folder = os.path.join(self.sub_folder_absolute, "processed")
         # start loading the dataframes
         file_paths = [
             ("metadata", os.path.join(self.raw_data_folder, self.config.metadata + ".csv")),
             ("abundance", os.path.join(self.raw_data_folder, self.config.abundances_file_name + ".csv")),
-            ("meanE_or_fracContrib", os.path.join(self.raw_data_folder, self.config.meanE_or_fracContrib_file_name + ".csv")),
+            (
+                "meanE_or_fracContrib",
+                os.path.join(self.raw_data_folder, self.config.meanE_or_fracContrib_file_name + ".csv"),
+            ),
             ("isotopologue_prop", os.path.join(self.raw_data_folder, self.config.isotopologue_prop_file_name + ".csv")),
-            ("isotopologue_abs", os.path.join(self.raw_data_folder, self.config.isotopologue_abs_file_name + ".csv"))
+            ("isotopologue_abs", os.path.join(self.raw_data_folder, self.config.isotopologue_abs_file_name + ".csv")),
         ]
         dfs = []
         for label, file_path in file_paths:
@@ -83,34 +88,55 @@ class Dataset(BaseModel):
                 logger.error("Failed to load file %s during preload, aborting", file_path)
                 raise e
 
-        self.metadata_df, self.abundance_df, self.meanE_or_fracContrib_df, self.isotopologue_prop_df, self.isotopologue_abs_df = dfs
+        (
+            self.metadata_df,
+            self.abundance_df,
+            self.meanE_or_fracContrib_df,
+            self.isotopologue_prop_df,
+            self.isotopologue_abs_df,
+        ) = dfs
 
         # log the first 5 rows of the metadata
         logger.info("Loaded metadata: \n%s", self.metadata_df.head())
-        logger.info("Finished loading raw dataset %s, available dataframes are : %s",
-                    self.config.label, self.available_datasets)
+        logger.info(
+            "Finished loading raw dataset %s, available dataframes are : %s", self.config.label, self.available_datasets
+        )
         self.check_expectations()
 
     def check_expectations(self):
         # conditions should be a subset of the metadata corresponding column
-        if not set(self.config.conditions).issubset(set(self.metadata_df['condition'].unique())):
+        if not set(self.config.conditions).issubset(set(self.metadata_df["condition"].unique())):
             logger.error("Conditions %s are not a subset of the metadata declared conditions", self.config.conditions)
-            raise ValueError(f"Conditions {self.config.conditions} are not a subset of the metadata declared conditions")
+            raise ValueError(
+                f"Conditions {self.config.conditions} are not a subset of the metadata declared conditions"
+            )
 
     def load_compartmentalized_data(self, suffix) -> pd.DataFrame:
-        compartments = self.metadata_df['short_comp'].unique().tolist()
+        compartments = self.metadata_df["short_comp"].unique().tolist()
         for c in compartments:
             file_paths = [
-                ("abundances_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundances_file_name}--{c}--{suffix}.tsv')),
-                ("meanE_or_fracContrib_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundances_file_name}--{c}--{suffix}.tsv')),
-                ("isotopologue_prop_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundances_file_name}--{c}--{suffix}.tsv')),
-                ("isotopologue_abs_file_name", os.path.join(self.processed_data_folder, f'{self.config.abundances_file_name}--{c}--{suffix}.tsv'))
+                (
+                    "abundances_file_name",
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}--{suffix}.tsv"),
+                ),
+                (
+                    "meanE_or_fracContrib_file_name",
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}--{suffix}.tsv"),
+                ),
+                (
+                    "isotopologue_prop_file_name",
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}--{suffix}.tsv"),
+                ),
+                (
+                    "isotopologue_abs_file_name",
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}--{suffix}.tsv"),
+                ),
             ]
 
             for label, fp in file_paths:
                 if label not in self.compartmentalized_dfs:
                     self.compartmentalized_dfs[label] = {}
-                self.compartmentalized_dfs[label][c] = pd.read_csv(fp, sep='\t', header=0, index_col=0)
+                self.compartmentalized_dfs[label][c] = pd.read_csv(fp, sep="\t", header=0, index_col=0)
                 logger.info("Loaded compartmentalized %s DF for %s", label, c)
 
     def get_file_for_label(self, label):
