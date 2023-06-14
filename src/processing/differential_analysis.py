@@ -4,10 +4,9 @@
 @author: Johanna Galvis, Florian Specque, Macha Nikolski
 """
 
-import argparse
 import os
 from typing import List
-
+import logging
 import numpy as np
 import pandas as pd
 import scipy.stats
@@ -23,6 +22,8 @@ from processing import fit_statistical_distribution
 import helpers
 from data import Dataset
 
+logger = logging.getLogger(__name__)
+
 def compute_span_incomparison(df: pd.DataFrame, groups: List) -> pd.DataFrame:
     """
     For each row in the input DataFrame, computes the difference between the maximum and minimum values
@@ -37,24 +38,6 @@ def compute_span_incomparison(df: pd.DataFrame, groups: List) -> pd.DataFrame:
         df.loc[i, 'span_allsamples'] = interval
 
     return df
-
-def calc_reduction(df, metad4c):
-    def renaming_original_col_sams(df):
-        newcols = ["input_" + i for i in df.columns]
-        df.columns = newcols
-
-        return df
-
-    ddof = 0  # for compute reduction
-    df4c = df[metad4c['name_to_plot']]
-
-    df4c = helpers.give_reduced_df(df4c, ddof)
-
-    df_orig_vals = renaming_original_col_sams(df[metad4c['name_to_plot']])
-
-    df4c = pd.merge(df_orig_vals, df4c, left_index=True, right_index=True)
-
-    return df4c
 
 
 def calc_ratios(df4c: pd.DataFrame, groups: List) -> pd.DataFrame:
@@ -152,107 +135,8 @@ def compute_mann_whitney_allH0(vInterest, vBaseline):
     return stat_result, pval_result
 
 
-def compute_ranksums_allH0(vInterest: np.array, vBaseline: np.array):
-    """
-    The Wilcoxon rank-sum test tests the null hypothesis that two sets of
-     measurements are drawn from the same distribution.
-    ‘two-sided’: one of the distributions (underlying x or y) is
-        stochastically greater than the other.
-    ‘less’: the distribution underlying x is stochastically less
-        than the distribution underlying y.
-    ‘greater’: the distribution underlying x is stochastically
-        greater than the distribution underlying y.
-    """
-    vInterest = vInterest[~np.isnan(vInterest)]
-    vBaseline = vBaseline[~np.isnan(vBaseline)]
-    sta, p = scipy.stats.ranksums(vInterest, vBaseline,
-                                  alternative="less")
-    sta2, p2 = scipy.stats.ranksums(vInterest, vBaseline,
-                                    alternative="greater")
-    sta3, p3 = scipy.stats.ranksums(vInterest, vBaseline,
-                                    alternative="two-sided")
 
-    # best (smaller pvalue) among all tailed tests
-    pretups = [(sta, p), (sta2, p2), (sta3, p3)]
-    tups = []
-    for t in pretups:  # make list of tuples with no-nan pvalues
-        if not np.isnan(t[1]):
-            tups.append(t)
-
-    if len(tups) == 0:  # if all pvalues are nan assign two sided result
-        tups = [(sta3, p3)]
-
-    stap_tup = min(tups, key=lambda x: x[1])  # nan already excluded
-    stat_result = stap_tup[0]
-    pval_result = stap_tup[1]
-
-    return stat_result, pval_result
-
-
-def compute_wilcoxon_allH0(vInterest: np.array, vBaseline: np.array):
-    #  Wilcoxon signed-rank test
-    vInterest = vInterest[~np.isnan(vInterest)]
-    vBaseline = vBaseline[~np.isnan(vBaseline)]
-    sta, p = scipy.stats.wilcoxon(vInterest, vBaseline,
-                                  alternative="less")
-    sta2, p2 = scipy.stats.wilcoxon(vInterest, vBaseline,
-                                    alternative="greater")
-    sta3, p3 = scipy.stats.wilcoxon(vInterest, vBaseline,
-                                    alternative="two-sided")
-
-    # best (smaller pvalue) among all tailed tests
-    pretups = [(sta, p), (sta2, p2), (sta3, p3)]
-    tups = []
-    for t in pretups:  # make list of tuples with no-nan pvalues
-        if not np.isnan(t[1]):
-            tups.append(t)
-
-    if len(tups) == 0:  # if all pvalues are nan assign two sided result
-        tups = [(sta3, p3)]
-
-    stap_tup = min(tups, key=lambda x: x[1])  # nan already excluded
-    stat_result = stap_tup[0]
-    pval_result = stap_tup[1]
-
-    return stat_result, pval_result
-
-
-def compute_brunnermunzel_allH0(vInterest: np.array, vBaseline: np.array):
-    vInterest = vInterest[~np.isnan(vInterest)]
-    vBaseline = vBaseline[~np.isnan(vBaseline)]
-    sta, p = scipy.stats.brunnermunzel(vInterest, vBaseline,
-                                       alternative="less")
-    sta2, p2 = scipy.stats.brunnermunzel(vInterest, vBaseline,
-                                         alternative="greater")
-    sta3, p3 = scipy.stats.brunnermunzel(vInterest, vBaseline,
-                                         alternative="two-sided")
-
-    # best (smaller pvalue) among all tailed tests
-    pretups = [(sta, p), (sta2, p2), (sta3, p3)]
-    tups = []
-    for t in pretups:  # make list of tuples with no-nan pvalues
-        if not np.isnan(t[1]):
-            tups.append(t)
-
-    if len(tups) == 0:  # if all pvalues are nan assign two sided result
-        tups = [(sta3, p3)]
-
-    stap_tup = min(tups, key=lambda x: x[1])  # nan already excluded
-    stat_result = stap_tup[0]
-    pval_result = stap_tup[1]
-
-    return stat_result, pval_result
-
-
-def statistic_absolute_geommean_diff(b_values: np.array, a_values: np.array):
-    m_b = helpers.compute_gmean_nonan(b_values)
-    m_a = helpers.compute_gmean_nonan(a_values)
-    # denom = m_a + m_b
-    # diff_normalized = abs((m_b - m_a) / denom)
-    diff_absolute = abs(m_b - m_a)
-    return diff_absolute
-
-
+# TODO: removed "stat" as it seems not to be used anywhere but creates conflits with disfit
 def run_statistical_test(df: pd.DataFrame, comparison: List, test: str) -> pd.DataFrame:
     """
     This is a switch function for running a pairwise differential analysis statistical test
@@ -283,17 +167,17 @@ def run_statistical_test(df: pd.DataFrame, comparison: List, test: str) -> pd.Da
                 vInterest, vBaseline)
 
         elif test == "ranksum":
-            stat_result, pval_result = compute_ranksums_allH0(
+            stat_result, pval_result = helpers.compute_ranksums_allH0(
                 vInterest, vBaseline)
 
         elif test == "Wcox":
             # signed-rank test: one sample (independence),
             # or two paired or related samples
-            stat_result, pval_result = compute_wilcoxon_allH0(
+            stat_result, pval_result = helpers.compute_wilcoxon_allH0(
                 vInterest, vBaseline)
 
         elif test == "BrMu":
-            stat_result, pval_result = compute_brunnermunzel_allH0(
+            stat_result, pval_result = helpers.compute_brunnermunzel_allH0(
                 vInterest, vBaseline)
 
         elif test == "prm-scipy":
@@ -301,7 +185,7 @@ def run_statistical_test(df: pd.DataFrame, comparison: List, test: str) -> pd.Da
             # so "greater" satisfy
             prm_res = scipy.stats.permutation_test(
                 (vInterest, vBaseline),
-                statistic=statistic_absolute_geommean_diff,
+                statistic=helpers.absolute_geommean_diff,
                 permutation_type='independent',
                 vectorized=False,
                 n_resamples=9999,
@@ -309,35 +193,36 @@ def run_statistical_test(df: pd.DataFrame, comparison: List, test: str) -> pd.Da
                 alternative='greater')
             stat_result, pval_result = prm_res.statistic, prm_res.pvalue
 
-        stare.append(stat_result)
+#        stare.append(stat_result)
         pval.append(pval_result)
 
-    assert (len(metabolites) == len(stare))
+#    assert (len(metabolites) == len(stare))
     assert (len(metabolites) == len(pval))
     return pd.DataFrame(data={"metabolite": metabolites,
-                              "stat": stare,
+#                              "stat": stare,
                               "pvalue": pval})
 
 
 def auto_detect_tailway(good_df, best_distribution, args_param):
     min_pval_ = list()
     for tail_way in ["two-sided", "right-tailed"]:
-        tmp = fit_statistical_distribution.compute_p_value(good_df, tail_way,
-                                                           best_distribution, args_param)
+        tmp = compute_p_value(good_df, tail_way, best_distribution, args_param)
 
         min_pval_.append(tuple([tail_way, tmp["pvalue"].min()]))
 
     return min(min_pval_, key=lambda x: x[1])[0]
 
-# TODO: inside of run_distribution there is a hidden visualization
-def run_distribution_fitting(df: pd.DataFrame, file_name):
+# TODO: inside of run_distribution there is a hidden visualization,
+#  removed it to avoid having to pass the file name deep in the call stack
+#  instead just logging the distribution name and parameters
+#  If plotting is needed, it has to be done in the 'visualization' folder
+def run_distribution_fitting(df: pd.DataFrame):
     df = fit_statistical_distribution.compute_z_score(df, "FC")
-    best_distribution, args_param = fit_statistical_distribution.find_best_distribution(
-        df,
-        out_histogram_distribution=out_histo_file)
+    best_distribution, args_param = fit_statistical_distribution.find_best_distribution(df)
+        #out_histogram_distribution=out_histo_file)
     autoset_tailway = auto_detect_tailway(df,
                                           best_distribution, args_param)
-    print("auto, best pvalues calculated :", autoset_tailway)
+    logger.info(f"auto, best pvalues calculated : {autoset_tailway}")
     df = compute_p_value(df, autoset_tailway,
                          best_distribution, args_param)
 
@@ -351,10 +236,10 @@ def compute_p_value(df: pd.DataFrame, test: str, best_dist,
         df['pvalue'] = 2 * (
                     1 - best_dist.cdf(abs(df['zscore']), **args_param))
     else:
-        print("WARNING: two-tailed or not")
+        print("WARNING: two-tailed or not") # TODO: clarify the warning message
     return df
 
-def compute_padj_version2(df, correction_alpha, correction_method):
+def compute_padj_version2(df, correction_alpha, correction_method): # TODO: there is no version1, change name?
     tmp = df.copy()
     # inspired from R documentation in p.adjust :
     tmp["pvalue"] = tmp[["pvalue"]].fillna(1)
@@ -384,7 +269,7 @@ def filter_diff_results(ratiosdf, padj_cutoff, log2FC_abs_cutoff):
 
     return ratiosdf
 
-
+# TODO : the intention is not clear, why do this?
 def reorder_columns_diff_end(df: pd.DataFrame) -> pd.DataFrame:
     standard_cols = [
         'count_nan_samples_group1',
@@ -392,7 +277,7 @@ def reorder_columns_diff_end(df: pd.DataFrame) -> pd.DataFrame:
         'distance',
         'span_allsamples',
         'distance/span',
-        'stat',
+#        'stat',
         'pvalue',
         'padj',
         'log2FC',
@@ -401,7 +286,7 @@ def reorder_columns_diff_end(df: pd.DataFrame) -> pd.DataFrame:
 
     desired_order = [
         'log2FC',
-        'stat',
+#        'stat',
         'pvalue',
         'padj',
         'distance/span',
@@ -433,9 +318,10 @@ def pairwise_comparison(df: pd.DataFrame, dataset: Dataset, cfg: DictConfig,
     # flatten the list of lists and select the subset of column names present in the sub dataframe
     columns = [i for i in reduce(operator.concat, conditions_list) if i in df.columns]
     this_comparison = [list(filter(lambda x: x in columns, sublist)) for sublist in conditions_list]
-    df4c = df[columns]
+    df4c = df[columns].copy()
     df4c = df4c[(df4c.T != 0).any()]  # delete rows being zero everywhere
     df4c = df4c.dropna(axis=0, how='all')
+    df4c = helpers.row_wise_nanstd_reduction(df4c)
     df4c = helpers.countnan_samples(df4c, this_comparison)
     df4c = distance_or_overlap(df4c, this_comparison)
     df4c = compute_span_incomparison(df4c, this_comparison)
@@ -491,11 +377,12 @@ def differential_comparison(file_name: data_files_keys_type, dataset: Dataset, c
                     os.path.join(out_table_dir, f"{base_file_name}.tsv"),
                     index_label="metabolite", header=True, sep='\t')
                 # filtered by thresholds :
-                filtered_df = filter_diff_results(
-                    result,
-                    cfg.analysis.thresholds.padj,
-                    cfg.analysis.thresholds.absolute_log2FC)
-                filtered_df.to_csv(os.path.join(out_table_dir, f"{base_file_name}_filter.tsv"),
+                filtered_df = filter_diff_results(result,
+                                                  cfg.analysis.thresholds.padj,
+                                                  cfg.analysis.thresholds.absolute_log2FC)
+                output_file_name = os.path.join(out_table_dir, f"{base_file_name}_filter.tsv")
+                filtered_df.to_csv(output_file_name,
                                    index_label="metabolite",
                                    header=True, sep='\t')
+                logger.info(f"Saved the result in {output_file_name}")
 

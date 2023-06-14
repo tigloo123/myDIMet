@@ -6,8 +6,7 @@
 
 import os
 from typing import Dict, List
-
-from omegaconf import DictConfig
+import scipy
 from collections.abc import Iterable
 
 import constants
@@ -22,6 +21,16 @@ from functools import reduce
 
 from constants import assert_literal, overlap_methods_types
 
+
+def row_wise_nanstd_reduction(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Performs a row-wise reduction of the DataFrame by dividing each value by its row's standard deviation,
+    considering the presence of NaN values.
+    """
+    std_values = df.apply(lambda row: np.nanstd(row), axis=1)
+    std_values[std_values == 0] = 1  # Replace zero standard deviations with 1 to avoid division by zero
+    result = df.div(std_values, axis=0)
+    return result
 
 def concatenate_dataframes(df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame) -> pd.DataFrame:
     '''
@@ -246,19 +255,6 @@ def detect_and_create_dir(namenesteddir):  # TODO : replace by os.makedirs(file_
     if not os.path.exists(namenesteddir):
         os.makedirs(namenesteddir)
 
-
-def open_metadata(file_path):
-    try:
-        metadata = pd.read_csv(file_path, sep='\t')
-        return metadata
-    except Exception as e:
-        print(e)
-        print('problem with opening metadata file')
-        metadata = None
-    if metadata is None:
-        raise ValueError("\nproblem opening configuration file")
-
-
 def verify_metadata_sample_not_duplicated(metadata_df: pd.DataFrame) -> None:
     def yield_repeated_elems(mylist):
         occur_dic = dict(map(lambda x: (x, list(mylist).count(x)),
@@ -288,41 +284,6 @@ def isotopologues_meaning_df(isotopologues_full_list):
 
 
 import pandas as pd
-
-
-def prepare4contrast(df: pd.DataFrame, cfg: DictConfig):
-    """
-    grouping,  example :  ['condition', 'timepoint' ]
-          if (for a sample)  condition = "treatment" and  timepoint = "t12h",
-          then newcol = "treatment_t12h"
-    contrast : example : ["treatment_t12h", "control_t12h" ]
-    """
-    cc = ametadata.copy()
-    if len(grouping) > 1:
-        cc = cc.assign(newcol=['' for i in range(cc.shape[0])])
-        for i, row in cc.iterrows():
-            elems = row[grouping].tolist()
-            cc.at[i, "newcol"] = "_".join(elems)
-    else:
-        cc = cc.assign(newcol=cc[grouping])
-    metas = cc.loc[cc["newcol"].isin(contrast), :]
-    newdf = df[metas['name_to_plot']]
-    return newdf, metas
-
-
-def splitrowbynewcol(row, metas):
-    """
-    Returns : miniD
-    example : Control_T24h : [0.0, 0.0, 0.0] , Treated_T24h : [0.0, 0.0, 0.0]
-    """
-    newcoluniq = list(set(metas["newcol"]))
-    miniD = dict()
-    for t in newcoluniq:
-        # print(metas.loc[metas["newcol"] == t,:])
-        koo = metas.loc[metas["newcol"] == t, :]
-        selsams = koo['name_to_plot']
-        miniD[t] = row[selsams].tolist()
-    return miniD
 
 
 def a12(lst1, lst2, rev=True):
@@ -371,15 +332,6 @@ def compute_reduction(df, ddof):
     return res
 
 
-def give_reduced_df(df, ddof):
-    rownames = df.index
-    df.index = range(len(rownames))
-    # index must be numeric because compute reduction accepted
-    df_red = compute_reduction(df, ddof)  # reduce
-    df_red.index = rownames
-    return df_red
-
-
 def compute_cv(reduced_abund):
     reduced_abu_np = reduced_abund.to_numpy().astype('float64')
     if np.nanmean(reduced_abu_np) != 0:
@@ -406,61 +358,9 @@ def give_coefvar_new(df_red, red_meta, newcol: str):
     dfout.index = df_red.index
     return dfout
 
-
-def compute_gmean_nonan(anarray):
-    anarray = np.array(anarray, dtype=float)
-    anarray = anarray[~np.isnan(anarray)]
-    if sum(anarray) == 0:  # replicates all zero
-        outval = 0
-    else:
-        outval = stats.gmean(anarray)
-    return outval
-
-
-def give_geommeans_new(df_red, metad4c, newcol: str, c_interest, c_control):
-    """
-    output: df, str, str
-    """
-
-    sams_interest = metad4c.loc[metad4c[newcol] == c_interest, 'name_to_plot']
-    sams_control = metad4c.loc[metad4c[newcol] == c_control, 'name_to_plot']
-    dfout = df_red.copy()
-    geomcol_interest = "geommean_" + c_interest
-    geomcol_control = "geommean_" + c_control
-    dfout[geomcol_interest] = [np.nan for i in range(dfout.shape[0])]
-    dfout[geomcol_control] = [np.nan for i in range(dfout.shape[0])]
-
-    for i, row in df_red.iterrows():
-        # i : the metabolite name in current row
-        vec_interest = np.array(row[sams_interest])  # [ sams_interest]
-        vec_control = np.array(row[sams_control])
-
-        val_interest = compute_gmean_nonan(vec_interest)
-        val_control = compute_gmean_nonan(vec_control)
-
-        dfout.loc[i, geomcol_interest] = val_interest
-        dfout.loc[i, geomcol_control] = val_control
-
-    return dfout, geomcol_interest, geomcol_control
-
-
-def give_ratios_df(df1, geomInterest, geomControl):
-    """ratio of geometric means is Fold Change: FC
-       Note : if zero replacement by min, which is
-       defined by default, will never enter in 'if contr == 0'
-    """
-    df = df1.copy()
-    df = df.assign(FC=[np.nan for i in range(df.shape[0])])
-    for i, row in df1.iterrows():
-        intere = row[geomInterest]
-        contr = row[geomControl]
-        if contr == 0:
-            df.loc[i, "FC"] = intere / 1e-10
-        else:
-            df.loc[i, "FC"] = intere / contr
-
-    return df
-
+def compute_gmean_nonan(anarray: np.array) -> float:
+    arr_nonzero = np.where(anarray == 0, np.finfo(float).eps, anarray)
+    return stats.gmean(arr_nonzero[~np.isnan(arr_nonzero)])
 
 def countnan_samples(df: pd.DataFrame, groups: List) -> pd.DataFrame:
     """
@@ -470,95 +370,10 @@ def countnan_samples(df: pd.DataFrame, groups: List) -> pd.DataFrame:
     Only works if groups contains two sublists of column names
     """
     assert (len(groups) == 2)
-    # vecout = []
-    # grs = metad4c['newcol'].unique()
-    # gr1 = metad4c.loc[metad4c['newcol'] == grs[0], 'name_to_plot']
-    # gr2 = metad4c.loc[metad4c['newcol'] == grs[1], 'name_to_plot']
-    #
-    # for i, row in df.iterrows():
-    #     vec1 = row[gr1].tolist()
-    #     vec2 = row[gr2].tolist()
-    #     val1 = np.sum(np.isnan(vec1))
-    #     val2 = np.sum(np.isnan(vec2))
-    #     vecout.append(tuple([str(val1) + '/' + str(len(vec1)),
-    #                          str(val2) + '/' + str(len(vec2))]))
-
     df['count_nan_samples_group1'] = df[groups[0]].isnull().sum(axis=1)
     df['count_nan_samples_group2'] = df[groups[1]].isnull().sum(axis=1)
 
-    # df['count_nan_samples'] = vecout
     return df
-
-
-# from here, functions for isotopologue preview
-
-def add_metabolite_column(df):
-    theindex = df.index
-    themetabolites = [i.split("_m+")[0] for i in theindex]
-    df = df.assign(metabolite=themetabolites)
-
-    return df
-
-
-def add_isotopologue_type_column(df):
-    theindex = df.index
-    preisotopologue_type = [i.split("_m+")[1] for i in theindex]
-    theisotopologue_type = [int(i) for i in preisotopologue_type]
-    df = df.assign(isotopologue_type=theisotopologue_type)
-
-    return df
-
-
-def save_heatmap_sums_isos(thesums, figuretitle, outputfigure) -> None:
-    fig, ax = plt.subplots(figsize=(9, 10))
-    sns.heatmap(thesums,
-                annot=True, fmt=".1f", cmap="crest",
-                square=True,
-                annot_kws={
-                    'fontsize': 6
-                },
-                ax=ax)
-    plt.xticks(rotation=90)
-    plt.title(figuretitle)
-    plt.savefig(outputfigure)
-    plt.close()
-
-
-def givelevels(melted):
-    another = melted.copy()
-    another = another.groupby('metabolite').min()
-    another = another.sort_values(by='value', ascending=False)
-    levelsmetabolites = another.index
-    tmp = melted['metabolite']
-    melted['metabolite'] = pd.Categorical(tmp, categories=levelsmetabolites)
-
-    return melted
-
-
-def table_minimalbymet(melted, fileout) -> None:
-    another = melted.copy()
-    another = another.groupby('metabolite').min()
-    another = another.sort_values(by='value', ascending=False)
-    another.to_csv(fileout, sep='\t', header=True)
-
-
-def save_rawisos_plot(dfmelt, figuretitle, outputfigure) -> None:
-    fig, ax = plt.subplots(1, 1, figsize=(16, 10))
-    sns.stripplot(ax=ax, data=dfmelt, x="value", y="metabolite", jitter=False,
-                  hue="isotopologue_type", size=4, palette="tab20")
-    plt.axvline(x=0,
-                ymin=0,
-                ymax=1,
-                linestyle="--", color="gray")
-    plt.axvline(x=1,
-                ymin=0,
-                ymax=1,
-                linestyle="--", color="gray")
-    sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
-    plt.title(figuretitle)
-    plt.xlabel("fraction")
-    plt.savefig(outputfigure)
-    plt.close()
 
 
 def dynamic_xposition_ylabeltext(plotwidth) -> float:
@@ -567,10 +382,107 @@ def dynamic_xposition_ylabeltext(plotwidth) -> float:
         position_float = 0.01
     return position_float
 
-
 def flatten(xs):
     for x in xs:
         if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
             yield from flatten(x)
         else:
             yield x
+
+def compute_ranksums_allH0(vInterest: np.array, vBaseline: np.array):
+    """
+    The Wilcoxon rank-sum test tests the null hypothesis that two sets of
+     measurements are drawn from the same distribution.
+    ‘two-sided’: one of the distributions (underlying x or y) is
+        stochastically greater than the other.
+    ‘less’: the distribution underlying x is stochastically less
+        than the distribution underlying y.
+    ‘greater’: the distribution underlying x is stochastically
+        greater than the distribution underlying y.
+    """
+    vInterest = vInterest[~np.isnan(vInterest)]
+    vBaseline = vBaseline[~np.isnan(vBaseline)]
+    sta, p = scipy.stats.ranksums(vInterest, vBaseline,
+                                  alternative="less")
+    sta2, p2 = scipy.stats.ranksums(vInterest, vBaseline,
+                                    alternative="greater")
+    sta3, p3 = scipy.stats.ranksums(vInterest, vBaseline,
+                                    alternative="two-sided")
+
+    # best (smaller pvalue) among all tailed tests
+    pretups = [(sta, p), (sta2, p2), (sta3, p3)]
+    tups = []
+    for t in pretups:  # make list of tuples with no-nan pvalues
+        if not np.isnan(t[1]):
+            tups.append(t)
+
+    if len(tups) == 0:  # if all pvalues are nan assign two sided result
+        tups = [(sta3, p3)]
+
+    stap_tup = min(tups, key=lambda x: x[1])  # nan already excluded
+    stat_result = stap_tup[0]
+    pval_result = stap_tup[1]
+
+    return stat_result, pval_result
+
+
+def compute_wilcoxon_allH0(vInterest: np.array, vBaseline: np.array):
+    #  Wilcoxon signed-rank test
+    vInterest = vInterest[~np.isnan(vInterest)]
+    vBaseline = vBaseline[~np.isnan(vBaseline)]
+    sta, p = scipy.stats.wilcoxon(vInterest, vBaseline,
+                                  alternative="less")
+    sta2, p2 = scipy.stats.wilcoxon(vInterest, vBaseline,
+                                    alternative="greater")
+    sta3, p3 = scipy.stats.wilcoxon(vInterest, vBaseline,
+                                    alternative="two-sided")
+
+    # best (smaller pvalue) among all tailed tests
+    pretups = [(sta, p), (sta2, p2), (sta3, p3)]
+    tups = []
+    for t in pretups:  # make list of tuples with no-nan pvalues
+        if not np.isnan(t[1]):
+            tups.append(t)
+
+    if len(tups) == 0:  # if all pvalues are nan assign two sided result
+        tups = [(sta3, p3)]
+
+    stap_tup = min(tups, key=lambda x: x[1])  # nan already excluded
+    stat_result = stap_tup[0]
+    pval_result = stap_tup[1]
+
+    return stat_result, pval_result
+
+
+def compute_brunnermunzel_allH0(vInterest: np.array, vBaseline: np.array):
+    vInterest = vInterest[~np.isnan(vInterest)]
+    vBaseline = vBaseline[~np.isnan(vBaseline)]
+    sta, p = scipy.stats.brunnermunzel(vInterest, vBaseline,
+                                       alternative="less")
+    sta2, p2 = scipy.stats.brunnermunzel(vInterest, vBaseline,
+                                         alternative="greater")
+    sta3, p3 = scipy.stats.brunnermunzel(vInterest, vBaseline,
+                                         alternative="two-sided")
+
+    # best (smaller pvalue) among all tailed tests
+    pretups = [(sta, p), (sta2, p2), (sta3, p3)]
+    tups = []
+    for t in pretups:  # make list of tuples with no-nan pvalues
+        if not np.isnan(t[1]):
+            tups.append(t)
+
+    if len(tups) == 0:  # if all pvalues are nan assign two sided result
+        tups = [(sta3, p3)]
+
+    stap_tup = min(tups, key=lambda x: x[1])  # nan already excluded
+    stat_result = stap_tup[0]
+    pval_result = stap_tup[1]
+
+    return stat_result, pval_result
+
+
+def absolute_geommean_diff(b_values: np.array, a_values: np.array):
+    m_b = compute_gmean_nonan(b_values)
+    m_a = compute_gmean_nonan(a_values)
+    diff_absolute = abs(m_b - m_a)
+    return diff_absolute

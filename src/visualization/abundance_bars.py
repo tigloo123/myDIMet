@@ -156,7 +156,6 @@ def run_plot_abundance_bars(
     ##############################
 
     compartments = metadata_df['short_comp'].unique().tolist()
-    # dynamically open the file based on prefix, compartment and suffix:
     for c in compartments:
         metadata_compartment_df: pd.DataFrame = metadata_df.loc[metadata_df['short_comp'] == c, :]
         compartment_df = dataset.compartmentalized_dfs['abundances_file_name'][c]

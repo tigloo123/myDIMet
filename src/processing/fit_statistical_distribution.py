@@ -22,7 +22,7 @@ def compute_z_score(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
     return df
 
 
-def find_best_distribution(df: pd.DataFrame, out_histogram_distribution: str):
+def find_best_distribution(df: pd.DataFrame): #, out_histogram_distribution: str):
     """
     Find the best distribution among all the scipy.stats distributions
     and return it together with its parameters
@@ -30,22 +30,21 @@ def find_best_distribution(df: pd.DataFrame, out_histogram_distribution: str):
     logger.info("Fitting a distribution")
     dist = np.around(np.array((df['zscore']).astype(float)), 5)  # TODO : why the rounding ?
 
-    best_dist, best_dist_name, best_fit_params = get_best_fit(
-        dist,
-        out_histogram_distribution)
+    best_dist, best_dist_name, best_fit_params = get_best_fit(dist)
+        #out_histogram_distribution)
 
-    logger.info("Best fit is", str(best_dist_name), "with", str(*best_fit_params))
+    logger.info(f"Best fit is {best_dist_name} with {best_fit_params}")
     args_param = dict(e.split('=') for e in best_fit_params.split(', '))
     for k, v in args_param.items():
         args_param[k] = float(v)
 
     best_distribution = getattr(stats, best_dist_name)
     q_val = best_dist.ppf(0.95, **args_param)
-    print("And the q value is", q_val)
+    logger.info(f"And the q value is {q_val}")
     return best_distribution, args_param
 
 
-def get_best_fit(input_array, out_file):
+def get_best_fit(input_array): #, out_file):
     matplotlib.rcParams['figure.figsize'] = (16.0, 12.0)
     matplotlib.style.use('ggplot')
     """Return the best fit distribution to data and its parameters"""
@@ -66,10 +65,10 @@ def get_best_fit(input_array, out_file):
         ', ') if best_dist.shapes else ['loc', 'scale']
     param_str = ', '.join(['{}={:0.2f}'.format(k, v) for k, v in
                            zip(param_names, best_fit_params)])
-    dist_str = '{} ({})'.format(best_fit_name, param_str)
 
     # Display
-    plot_best_fit(data, dist_str, pdf, out_file)
+    # dist_str = '{} ({})'.format(best_fit_name, param_str)
+    # plot_best_fit(data, dist_str, pdf, out_file)
 
     return best_dist, best_fit_name, param_str
 

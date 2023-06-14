@@ -7,7 +7,7 @@
 from unittest import TestCase
 
 import pandas as pd
-
+import numpy as np
 import helpers
 
 
@@ -59,7 +59,6 @@ class TestHelpers(TestCase):
                          ['Charlie', 'Dave', 'Francoise'])  # assert might break due to ordering
         self.assertEqual(list(df2["Name"].values), ['Alice', 'Bob'])
 
-
     def test_concatenate_dataframes(self):
         df1 = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6], 'C': [7, 8, 9]})
         df2 = pd.DataFrame({'A': [10, 11, 12], 'B': [13, 14, 15]})
@@ -69,4 +68,27 @@ class TestHelpers(TestCase):
         result = result.fillna(-1)
 
         self.assertTrue(all(result["C"] == [7.0, 8.0, 9.0, -1.0, -1.0, -1.0, 19.0, 20.0, 21.0]))
-        self.assertTrue(all(result["A"] == [1.0, 2.0, 3.0, 10.0, 11.0, 12.0, -1.0, -1.,0 -1.0]))
+        self.assertTrue(all(result["A"] == [1.0, 2.0, 3.0, 10.0, 11.0, 12.0, -1.0, -1., 0 - 1.0]))
+
+    def test_row_wise_nanstd_reduction(self):
+        data = {
+            'A': [1, 0, 3, 4],
+            'B': [5, 0, 6, 0],
+            'C': [7, 0, 8, 9],
+            'D': [10, 0, 11, 12],
+        }
+        df = pd.DataFrame(data)
+
+        # Apply row-wise nanstd reduction
+        result = helpers.row_wise_nanstd_reduction(df)
+        self.assertTrue(np.allclose(np.array(result["B"]), np.array([1.529438, 0.0, 2.057983, 0.0])))
+        self.assertTrue(np.allclose(np.array(result.iloc[1]), np.array([0.0, 0.0, 0.0, 0.0])))
+
+    def test_compute_gmean_nonan(self):
+        arr1 = np.array([1, 2, np.nan, 4, 5])
+        arr2 = np.array([0, 0, 0, 0])
+        gmean1 = helpers.compute_gmean_nonan(arr1)
+        gmean2 = helpers.compute_gmean_nonan(arr2)
+        print(gmean1, gmean2)
+        self.assertAlmostEqual(gmean1, 2.514, 2)
+        self.assertAlmostEqual(gmean2, np.finfo(float).eps)
