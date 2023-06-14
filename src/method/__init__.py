@@ -98,7 +98,7 @@ class DifferentialAnalysis(Method):
         self.check_expectations(cfg, dataset)
         for file_name, test in cfg.analysis.statistical_test.items():
             if test is None : continue
-            logger.info(f"Running differential analysis using {test} test")
+            logger.info(f"Running differential analysis of {dataset.get_file_for_label(file_name)} using {test} test")
             differential_comparison(file_name, dataset, cfg, test, out_table_dir=out_table_dir)
 
     def check_expectations(self, cfg, dataset):

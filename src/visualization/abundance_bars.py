@@ -51,7 +51,7 @@ def plot_abundance_bars(
         axisx_labeltilt: int,
         wspace_subfigs: float,
         cfg: DictConfig) -> int:
-    # TODO find a way to have these fonts on Mac OS,
+    #TODO find a way to have these fonts on Mac OS,
     # in the meantime, use the default font to avoid [WARNING] - findfont: Generic family
     # sns.set_style({"font.family": "sans-serif",
     #                "font.sans-serif": "Liberation Sans"})

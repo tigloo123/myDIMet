@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+@author: Johanna Galvis, Florian Specque, Macha Nikolski
+"""
+
 import logging
 import os
 
@@ -6,7 +12,6 @@ from omegaconf import DictConfig, OmegaConf
 
 from data import Dataset
 from method import Method
-from visualization.abundance_bars import run_plot_abundance_bars
 
 from data import make_dataset
 

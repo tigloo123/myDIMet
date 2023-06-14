@@ -44,7 +44,7 @@ class TestHelpers(TestCase):
         values_to_match = [['London', 'UK'], ['Paris', 'France']]
 
         # Select rows based on fixed values
-        selected_rows = helpers.select_rows_by_fixed_values(df, columns_to_match, values_to_match)
+        selected_rows = helpers.first_column_for_column_values(df, columns_to_match, values_to_match)
 
         self.assertEqual(selected_rows, [['Alice', 'Dave'], ['Charlie', 'Francoise']])
 
@@ -92,3 +92,19 @@ class TestHelpers(TestCase):
         print(gmean1, gmean2)
         self.assertAlmostEqual(gmean1, 2.514, 2)
         self.assertAlmostEqual(gmean2, np.finfo(float).eps)
+
+    def test_first_column_for_column_values(self):
+        data = {'Name': ['Alice', 'Bob', 'Charlie', 'Dave'],
+                'Age': [25, 30, 35, 40],
+                'City': ['London', 'Paris', 'London', 'New York']}
+        df = pd.DataFrame(data)
+
+        # Define the columns and values to select
+        columns = ['Age', 'City']
+        values1 = [[30, 'Paris'], [35, 'London']]
+        values2 = [[30, 'Paris', "France"], [35, 'London']]
+
+        # Call the select_rows_by_fixed_values function
+        result = helpers.first_column_for_column_values(df, columns, values1)
+        self.assertEqual(result, [['Bob'], ['Charlie']])
+        self.assertRaises(ValueError, helpers.first_column_for_column_values, df, columns, values2)

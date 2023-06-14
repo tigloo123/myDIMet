@@ -109,7 +109,7 @@ def make_pdf(dist, params, size=10000):
 
 
 def best_fit_distribution(data, bins=200):
-    # TODO: try and catch exception and warnings
+    #TODO: try and catch exception and warnings
 
     matplotlib.rcParams['figure.figsize'] = (16.0, 12.0)
     matplotlib.style.use('ggplot')

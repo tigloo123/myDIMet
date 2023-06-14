@@ -13,8 +13,6 @@ import constants
 import numpy as np
 import pandas as pd
 from scipy import stats
-import matplotlib.pyplot as plt
-import seaborn as sns
 import locale
 import re
 from functools import reduce
@@ -85,9 +83,10 @@ def calculate_gmean(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
     return df
 
 
-def select_rows_by_fixed_values(df, columns, values):
+def first_column_for_column_values(df: pd.DataFrame, columns: List, values: List) -> List:
     """
-    Selects rows from a DataFrame based on fixed values in multiple columns.
+    Given a dataframe df and selection columns, selects rows where values are equal to the those
+     in the "values" List (provided in pairwise fashion).
     Returns: list of values of the first column for selected rows.
     """
 
@@ -107,7 +106,7 @@ def select_rows_by_fixed_values(df, columns, values):
     return first_column_values_list
 
 
-def zero_repl_arg(zero_repl_arg: str) -> None:  # TODO: this has to be cleaned up
+def zero_repl_arg(zero_repl_arg: str) -> None:  #TODO: this has to be cleaned up
     '''
      zero_repl_arg is a string representing the argument for replacing zero values (e.g. "min/2").
      The result is a dictionary of replacement arguments.

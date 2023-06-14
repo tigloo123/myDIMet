@@ -136,7 +136,7 @@ def compute_mann_whitney_allH0(vInterest, vBaseline):
 
 
 
-# TODO: removed "stat" as it seems not to be used anywhere but creates conflits with disfit
+#TODO: removed "stat" as it seems not to be used anywhere but creates conflits with disfit
 def run_statistical_test(df: pd.DataFrame, comparison: List, test: str) -> pd.DataFrame:
     """
     This is a switch function for running a pairwise differential analysis statistical test
@@ -212,7 +212,7 @@ def auto_detect_tailway(good_df, best_distribution, args_param):
 
     return min(min_pval_, key=lambda x: x[1])[0]
 
-# TODO: inside of run_distribution there is a hidden visualization,
+#TODO: inside of run_distribution there is a hidden visualization,
 #  removed it to avoid having to pass the file name deep in the call stack
 #  instead just logging the distribution name and parameters
 #  If plotting is needed, it has to be done in the 'visualization' folder
@@ -269,7 +269,7 @@ def filter_diff_results(ratiosdf, padj_cutoff, log2FC_abs_cutoff):
 
     return ratiosdf
 
-# TODO : the intention is not clear, why do this?
+#TODO : the intention is not clear, why do this?
 def reorder_columns_diff_end(df: pd.DataFrame) -> pd.DataFrame:
     standard_cols = [
         'count_nan_samples_group1',
@@ -312,9 +312,9 @@ def pairwise_comparison(df: pd.DataFrame, dataset: Dataset, cfg: DictConfig,
     '''
     Runs a pairwise comparison according to the comparison list in the analysis yaml file
     '''
-    conditions_list = helpers.select_rows_by_fixed_values(df=dataset.metadata_df,
-                                                          columns=cfg.analysis.method.grouping,
-                                                          values=comparison)
+    conditions_list = helpers.first_column_for_column_values(df=dataset.metadata_df,
+                                                             columns=cfg.analysis.method.grouping,
+                                                             values=comparison)
     # flatten the list of lists and select the subset of column names present in the sub dataframe
     columns = [i for i in reduce(operator.concat, conditions_list) if i in df.columns]
     this_comparison = [list(filter(lambda x: x in columns, sublist)) for sublist in conditions_list]
