@@ -141,11 +141,10 @@ def run_plot_abundance_bars(
         cfg: DictConfig) -> None:
     metadata_df = dataset.metadata_df
 
-    # This has to migrate somewhere else than the top level configuration
     ##############################
     time_sel = cfg.analysis.time_sel  # locate where it is used
-    selectedmetsD = cfg.analysis.metabolites_to_plot  # locate where it is used
-    condilevels = cfg.analysis.dataset.conditions  # <= locate where it is used
+    metabolites_to_plot = cfg.analysis.metabolites_to_plot  # will define which metabolites are plotted in the abundance plot
+    conditions = cfg.analysis.dataset.conditions  # <= locate where it is used
 
     axisx_labeltilt = cfg.analysis.method.axisx_labeltilt
     axisx_var = cfg.analysis.method.axisx
@@ -166,13 +165,13 @@ def run_plot_abundance_bars(
         # total piled-up data:
         piled_sel = pile_up_abundance(abu_sel, metada_sel)
         piled_sel["condition"] = pd.Categorical(
-            piled_sel["condition"], condilevels)
+            piled_sel["condition"], conditions)
         piled_sel["timepoint"] = pd.Categorical(
             piled_sel["timepoint"], time_sel)
 
-        plotwidth = width_each_subfig * len(selectedmetsD[c])
+        plotwidth = width_each_subfig * len(metabolites_to_plot[c])
 
-        plot_abundance_bars(piled_sel, selectedmetsD[c], c,
+        plot_abundance_bars(piled_sel, metabolites_to_plot[c], c,
                             "total_abundance",
                             axisx_var, hue_var, plotwidth,
                             out_plot_dir, axisx_labeltilt,

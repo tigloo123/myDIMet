@@ -77,13 +77,26 @@ class AbundancePlot(Method):
     config: AbundancePlotConfig
 
     def run(self, cfg: DictConfig, dataset: Dataset) -> None:
-        logger.info(f"The current working directory is {os.getcwd()}")
-        logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
         logger.info("Will plot the abundance plot, with the following config: %s", self.config)
         dataset.load_compartmentalized_data(suffix=cfg.suffix)
+        self.check_expectations(cfg, dataset)
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
         os.makedirs(out_plot_dir,exist_ok=True)
         run_plot_abundance_bars(dataset, out_plot_dir, cfg)
+    def check_expectations(self, cfg, dataset):
+        # check that thresholds are provided in the config
+        try:
+            if not set(cfg.analysis.metabolites_to_plot.keys()).issubset(dataset.metadata_df['short_comp']):
+                raise ValueError(f"[Analysis > Metabolites to plot > compartments] are missing from [Metadata > Compartments]")
+            if not set(cfg.analysis.time_sel).issubset(set(dataset.metadata_df['timepoint'])):
+                raise ValueError(f"[Analysis > Time sel] time points provided in the config file are not present in [Metadata > timepoint]")
+        except ConfigAttributeError as e:
+            logger.error(f"Mandatory parameter not provided in the config file:{e}, aborting")
+            sys.exit(1)
+        except ValueError as e:
+            logger.error(f"Data inconsistency:{e}")
+            sys.exit(1)
+
 
 class DifferentialAnalysis(Method):
     config: DifferentialAnalysisConfig
@@ -105,6 +118,9 @@ class DifferentialAnalysis(Method):
         # check that thresholds are provided in the config
         try:
             float(cfg.analysis.thresholds.padj) is not None and float(cfg.analysis.thresholds.absolute_log2FC) is not None
+            if not set(cfg.analysis.metabolites_to_plot.keys()).issubset(dataset.metadata_df['short_comp']):
+                raise ValueError(f"Comparisons > Conditions or timepoints provided in the config file {diff} are not present in the metadata file, aborting")
+
             if not set(cfg.analysis.time_sel).issubset(set(dataset.metadata_df['timepoint'])):
                 raise ValueError(f"Timepoints provided in the config file are not present in the metadata file, aborting")
             # all values in the comparisons arrays of arrays are in the metadata, either as conditions or timepoints

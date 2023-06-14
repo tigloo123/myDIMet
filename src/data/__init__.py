@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, List, Literal, Set, Dict
 
 import pandas as pd
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import ListConfig
 from pydantic import BaseModel as PydanticBaseModel
 
@@ -51,9 +52,13 @@ class Dataset(BaseModel):
 
     def preload(self):
         # check if we have a relative or absolute path, compute the absolute path then load the data using pandas
+        # if the path is relative, we assume it is relative to the original CWD (befre hydra changed it)
         # store the data in self.metadata
+        original_cwd = HydraConfig.get().runtime.cwd
+        logger.info("Current config directory is %s", original_cwd)
         if not self.config.subfolder.startswith("/"):
-            self.sub_folder_absolute = os.path.join(Path(__file__).parent.parent.parent, "data", self.config.subfolder)
+            self.sub_folder_absolute = os.path.join(Path(original_cwd), "data", self.config.subfolder)
+            logger.info("looking for data in %s", self.sub_folder_absolute)
         else:
             self.sub_folder_absolute = self.self.config.subfolder
         self.raw_data_folder = os.path.join(self.sub_folder_absolute, 'raw')
@@ -72,6 +77,7 @@ class Dataset(BaseModel):
                 dfs.append(pd.read_csv(file_path, sep="\t", header=0))
                 self.available_datasets.add(label)
             except FileNotFoundError:
+                logger.critical("File %s not found, continuing, but this might fail miserably", file_path)
                 dfs.append(None)
             except Exception as e:
                 logger.error("Failed to load file %s during preload, aborting", file_path)
