@@ -10,4 +10,4 @@ defaults:
   - method: abundance_plot
 
 metabolites_to_plot:
-  endo: [Fru1P, Cit]
+  endo: [Cit, Fru1P]
