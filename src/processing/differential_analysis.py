@@ -154,7 +154,6 @@ def compute_mann_whitney_allH0(vInterest, vBaseline):
 def run_statistical_test(df: pd.DataFrame, comparison: List, test: str) -> pd.DataFrame:
     """
     This is a switch function for running a pairwise differential analysis statistical test
-    The comparison is a list with 2 sublists that contain column names
     """
     metabolites = df.index.values
     stare, pval = [], []

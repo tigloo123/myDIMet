@@ -6,7 +6,11 @@
 from typing import Dict
 
 import click
+import logging
+from pathlib import Path
+from dotenv import find_dotenv, load_dotenv
 import os
+import argparse
 import pandas as pd
 from omegaconf import DictConfig
 
@@ -20,6 +24,14 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click.argument("input_filepath", type=click.Path(exists=True))
 @click.argument("output_filepath", type=click.Path())
+def prep_args():
+    show_defaults = argparse.ArgumentDefaultsHelpFormatter
+    parser = argparse.ArgumentParser(prog="python -m DIMet.src.prepare", formatter_class=show_defaults)
+
+    parser.add_argument("config", type=str, help="Configuration file in absolute path")
+
+    return parser
+
 
 def tabs_2_frames_dict(cfg, dataset: Dataset) -> dict:
     frames_dict = dict()

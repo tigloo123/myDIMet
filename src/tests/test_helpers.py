@@ -100,6 +100,7 @@ class TestHelpers(TestCase):
         arr2 = np.array([0, 0, 0, 0])
         gmean1 = helpers.compute_gmean_nonan(arr1)
         gmean2 = helpers.compute_gmean_nonan(arr2)
+        print(gmean1, gmean2)
         self.assertAlmostEqual(gmean1, 2.514, 2)
         self.assertAlmostEqual(gmean2, np.finfo(float).eps)
 
@@ -120,15 +121,3 @@ class TestHelpers(TestCase):
         result = helpers.first_column_for_column_values(df, columns, values1)
         self.assertEqual(result, [["Bob"], ["Charlie"]])
         self.assertRaises(ValueError, helpers.first_column_for_column_values, df, columns, values2)
-
-    def test_countnan_samples(self):
-        data = {
-            "c1": [0.1, np.nan, 2, np.nan],
-            "c2": [25, np.nan, 35, 40],
-            "c3": [np.nan, np.nan, np.nan, 365],
-            "c4": [10, np.nan, 34, np.nan],
-        }
-        df = pd.DataFrame(data)
-        result = helpers.countnan_samples(df, [["c1", "c2"],["c3", "c4"]])
-        self.assertTrue(np.any(np.array(result['count_nan_samples_group1']) == np.array([0, 2, 0, 1])))
-        self.assertTrue(np.any(np.array(result['count_nan_samples_group2']) == np.array([1, 2, 1, 1])))

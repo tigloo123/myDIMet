@@ -206,12 +206,55 @@ def check_dict_has_known_values(d: dict, possible_values: list) -> np.array:
     return np.array(known_val)
 
 
+def auto_check_validity_configuration_file(confidic) -> None:
+    expected_keys = constants.data_files_keys  # + ['conditions', 'suffix']
+    has_key = check_dict_has_keys(confidic, expected_keys)
+    missing_keys = np.array(expected_keys)[~has_key].tolist()
+    assert all(has_key), f"{missing_keys} : missing in configuration file! "
+
+
+def verify_good_extensions_measures(confidic) -> None:
+    """
+    All DIMet modules use measures names without extension,
+    if user put them by mistake, verify the format is ok.
+    See also 'remove_extensions_names_measures()'
+    """
+    list_config_tabs = [
+        confidic["abundances_file_name"],
+        confidic["meanE_or_fracContrib_file_name"],
+        confidic["isotopologue_prop_file_name"],
+        confidic["isotopologue_abs_file_name"],
+    ]
+
+    list_config_tabs = [i for i in list_config_tabs if i is not None]
+    for lc in list_config_tabs:
+        if lc.endswith(".txt") or lc.endswith(".TXT"):
+            raise ValueError("Error : your files must be .csv, not .txt/TXT")
+        elif lc.endswith(".xlsx"):
+            raise ValueError("Error : your files must be .csv", "Moreover : .xlsx files are not admitted !")
+
+
+def remove_extensions_names_measures(confidic) -> dict:
+    """
+    All DIMet modules use measures names without extension,
+    if user put them by mistake, this function internally removes them.
+    Call it in all modules before using config keys
+    """
+    keys_names = constants.data_files_keys
+    for k in keys_names:
+        tmp = confidic[k]
+        if tmp is not None:
+            tmp = re.sub(".csv|.tsv|.CSV|.TSV", "", tmp)
+            confidic[k] = tmp
+    return confidic
+
+
 def detect_and_create_dir(namenesteddir):  # TODO : replace by os.makedirs(file_name, exist_ok = True)
     if not os.path.exists(namenesteddir):
         os.makedirs(namenesteddir)
 
 
-def verify_metadata_sample_not_duplicated(metadata_df: pd.DataFrame) -> None: # TODO: move to dataset check_expectations
+def verify_metadata_sample_not_duplicated(metadata_df: pd.DataFrame) -> None:
     def yield_repeated_elems(mylist):
         occur_dic = dict(map(lambda x: (x, list(mylist).count(x)), mylist))  # credits: w3resource.com
         repeated_elems = list()
@@ -224,6 +267,20 @@ def verify_metadata_sample_not_duplicated(metadata_df: pd.DataFrame) -> None: # 
     if len(sample_duplicated) > 0:
         txt_errors = f"-> duplicated sample names: {sample_duplicated}\n"
         raise ValueError(f"Error, found these conflicts in your metadata:\n{txt_errors}")
+
+
+def isotopologues_meaning_df(isotopologues_full_list):
+    xu = {"metabolite": [], "m+x": [], "isotopologue_name": []}
+    for ch in isotopologues_full_list:
+        elems = ch.split("_m+")
+        xu["metabolite"].append(elems[0])
+        xu["m+x"].append("m+{}".format(elems[-1].split("-")[-1]))
+        xu["isotopologue_name"].append(ch)
+    df = pd.DataFrame.from_dict(xu)
+    return df
+
+
+import pandas as pd
 
 
 def a12(lst1, lst2, rev=True):
@@ -276,6 +333,22 @@ def compute_cv(reduced_abund):
         return 0
     else:
         return np.nan
+
+
+def give_coefvar_new(df_red, red_meta, newcol: str):
+    print("give cv")
+
+    groups_ = red_meta[newcol].unique()
+    tmpdico = dict()
+    for group in groups_:
+        samplesthisgroup = red_meta.loc[red_meta[newcol] == group, "name_to_plot"]
+        subdf = df_red[samplesthisgroup]
+        subdf = subdf.assign(CV=subdf.apply(compute_cv, axis=1))
+        tmpdico[f"CV_{group}"] = subdf.CV.tolist()
+
+    dfout = pd.DataFrame.from_dict(tmpdico)
+    dfout.index = df_red.index
+    return dfout
 
 
 def compute_gmean_nonan(anarray: np.array) -> float:
