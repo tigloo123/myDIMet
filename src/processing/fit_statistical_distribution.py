@@ -72,7 +72,7 @@ def get_best_fit(input_array):  # , out_file):
     return best_dist, best_fit_name, param_str
 
 
-def plot_best_fit(data, dist_str, pdf, out_file):
+def plot_best_fit(data, dist_str, pdf, out_file): #TODO: either remove or place in visualization
     plt.figure(figsize=(12, 8))
     plt.hist(data, bins="auto", density=True, alpha=0.5, label="Data")
     plt.plot(pdf, lw=2, label="PDF")
