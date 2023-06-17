@@ -17,10 +17,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-@click.command()
-@click.argument("input_filepath", type=click.Path(exists=True))
-@click.argument("output_filepath", type=click.Path())
-
 def tabs_2_frames_dict(cfg, dataset: Dataset) -> dict:
     frames_dict = dict()
     df_list = [
