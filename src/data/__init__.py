@@ -111,25 +111,25 @@ class Dataset(BaseModel):
                 f"Conditions {self.config.conditions} are not a subset of the metadata declared conditions"
             )
 
-    def load_compartmentalized_data(self, suffix) -> pd.DataFrame:
+    def load_compartmentalized_data(self) -> pd.DataFrame:
         compartments = self.metadata_df["short_comp"].unique().tolist()
         for c in compartments:
             file_paths = [
                 (
                     "abundances_file_name",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}--{suffix}.tsv"),
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}.tsv"),
                 ),
                 (
                     "meanE_or_fracContrib_file_name",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}--{suffix}.tsv"),
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}.tsv"),
                 ),
                 (
                     "isotopologue_prop_file_name",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}--{suffix}.tsv"),
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}.tsv"),
                 ),
                 (
                     "isotopologue_abs_file_name",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}--{suffix}.tsv"),
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}.tsv"),
                 ),
             ]
 

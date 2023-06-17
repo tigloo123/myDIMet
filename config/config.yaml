@@ -6,20 +6,11 @@ hydra:
 
 # check https://hydra.cc/docs/patterns/specializing_config/ for more info about this
 defaults:
-#  - analysis: synthetic_abundance_plot
-#  - analysis: example_toy1_abundance_plot
-  - analysis: synthetic_differential_analysis
+  - analysis: abundance_plot
   - _self_
 
 figure_path: figures
-table_path : tables
-suffix : cyc1
-
-# Isotopologue Contribution plot configuration
-# -----------------------------
-width_each_stack : !!float 3
-wspace_stacks : !!float 1.1
-numbers_size : 13
+table_path: tables
 
 palette: pastel
 x_text: ''

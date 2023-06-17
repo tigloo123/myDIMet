@@ -133,8 +133,8 @@ def run_plot_abundance_bars(dataset: Dataset, out_plot_dir, cfg: DictConfig) -> 
 
     ##############################
     time_sel = cfg.analysis.time_sel  # locate where it is used
-    metabolites_to_plot = (
-        cfg.analysis.metabolites_to_plot
+    metabolites = (
+        cfg.analysis.metabolites
     )  # will define which metabolites are plotted in the abundance plot
     conditions = cfg.analysis.dataset.conditions  # <= locate where it is used
 
@@ -159,11 +159,11 @@ def run_plot_abundance_bars(dataset: Dataset, out_plot_dir, cfg: DictConfig) -> 
         piled_sel["condition"] = pd.Categorical(piled_sel["condition"], conditions)
         piled_sel["timepoint"] = pd.Categorical(piled_sel["timepoint"], time_sel)
 
-        plotwidth = width_each_subfig * len(metabolites_to_plot[c])
+        plotwidth = width_each_subfig * len(metabolites[c])
 
         plot_abundance_bars(
             piled_sel,
-            metabolites_to_plot[c],
+            metabolites[c],
             c,
             "total_abundance",
             axisx_var,

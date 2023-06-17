@@ -386,8 +386,8 @@ def differential_comparison(
                 result["compartment"] = compartment
                 result = reorder_columns_diff_end(result)
                 result = result.sort_values(["padj", "distance/span"], ascending=[True, False])
-                strcontrast = "-".join(map(lambda x: "-".join(x), comparison))
-                base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}--{cfg.analysis.dataset.suffix}-{strcontrast}_{test}"
+                comp = "-".join(map(lambda x: "-".join(x), comparison))
+                base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}-{comp}-{test}"
                 result.to_csv(
                     os.path.join(out_table_dir, f"{base_file_name}.tsv"),
                     index_label="metabolite",

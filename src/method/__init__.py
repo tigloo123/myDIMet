@@ -4,11 +4,8 @@ import sys
 from pathlib import Path
 from typing import Optional, List, Literal, Set, Any, Dict
 
-from omegaconf import DictConfig, OmegaConf, ListConfig
+from omegaconf import DictConfig, OmegaConf, ListConfig, open_dict
 from omegaconf.errors import ConfigAttributeError
-
-from pydantic.dataclasses import dataclass
-from pydantic import validator
 
 from pydantic import BaseModel as PydanticBaseModel
 
@@ -79,18 +76,24 @@ class AbundancePlot(Method):
 
     def run(self, cfg: DictConfig, dataset: Dataset) -> None:
         logger.info("Will plot the abundance plot, with the following config: %s", self.config)
-        dataset.load_compartmentalized_data(suffix=cfg.suffix)
+        dataset.load_compartmentalized_data()
+        if not ("metabolites" in cfg.analysis.keys()):  # plotting for _all_ metabolites
+            logger.warning("No selected metabolites provided, plotting for all; might result in ugly too wide plots")
+            with open_dict(cfg):
+                for c in set(dataset.metadata_df["short_comp"]):
+                    cfg.analysis["metabolites"] = {c: list(dataset.abundance_df["metabolite_or_isotopologue"])}
+
         self.check_expectations(cfg, dataset)
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
         os.makedirs(out_plot_dir, exist_ok=True)
         run_plot_abundance_bars(dataset, out_plot_dir, cfg)
 
-    def check_expectations(self, cfg, dataset):
-        # check that thresholds are provided in the config
+    def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
+        # check that necessary information is provided in the analysis config
         try:
-            if not set(cfg.analysis.metabolites_to_plot.keys()).issubset(dataset.metadata_df["short_comp"]):
+            if not set(cfg.analysis.metabolites.keys()).issubset(dataset.metadata_df["short_comp"]):
                 raise ValueError(
-                    f"[Analysis > Metabolites to plot > compartments] are missing from [Metadata > Compartments]"
+                    f"[Analysis > Metabolites > compartments] are missing from [Metadata > Compartments]"
                 )
             if not set(cfg.analysis.time_sel).issubset(set(dataset.metadata_df["timepoint"])):
                 raise ValueError(
@@ -111,7 +114,7 @@ class DifferentialAnalysis(Method):
         logger.info(f"The current working directory is {os.getcwd()}")
         logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
         logger.info("Will perform differential analysis, with the following config: %s", self.config)
-        dataset.load_compartmentalized_data(suffix=cfg.suffix)
+        dataset.load_compartmentalized_data()
         out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
         os.makedirs(out_table_dir, exist_ok=True)
         self.check_expectations(cfg, dataset)
@@ -122,16 +125,16 @@ class DifferentialAnalysis(Method):
             differential_comparison(file_name, dataset, cfg, test, out_table_dir=out_table_dir)
 
     def check_expectations(self, cfg, dataset):
-        # check that thresholds are provided in the config
+        # check that necessary information is provided in the analysis config
         try:
-            float(cfg.analysis.thresholds.padj) is not None and float(
-                cfg.analysis.thresholds.absolute_log2FC
-            ) is not None
-            if not set(cfg.analysis.metabolites_to_plot.keys()).issubset(dataset.metadata_df["short_comp"]):
-                raise ValueError(
-                    f"Comparisons > Conditions or timepoints provided in the config file are not present in the metadata file, aborting"
-                )
+            float(cfg.analysis.thresholds.padj) is not None and \
+                float(cfg.analysis.thresholds.absolute_log2FC) is not None
 
+            if not all(any(item[0] in set(dataset.metadata_df["condition"]) for item in sublist)
+                       for sublist in cfg.analysis.comparisons):
+                raise ValueError(
+                    f"Conditions provided for comparisons in the config file are not present in the metadata file, aborting"
+                )
             if not set(cfg.analysis.time_sel).issubset(set(dataset.metadata_df["timepoint"])):
                 raise ValueError(
                     f"Timepoints provided in the config file are not present in the metadata file, aborting"

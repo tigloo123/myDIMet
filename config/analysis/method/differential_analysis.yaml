@@ -1,7 +1,7 @@
 _target_: method.DifferentialAnalysisConfig
 
 label: differential analysis
-name: indentify differences
+name: Pairwise computation of statistical differences
 
 grouping :
   - condition
@@ -16,3 +16,13 @@ impute_values:
   meanE_or_fracContrib_file_name: "min"
   isotopologue_abs_file_name: "min"
   isotopologue_prop_file_name: "min"
+
+statistical_test:
+  abundances_file_name: KW
+  meanE_or_fracContrib_file_name: KW
+  isotopologue_abs_file_name: KW
+  isotopologue_prop_file_name: KW
+
+thresholds:
+  padj: 0.05
+  absolute_log2FC: 1

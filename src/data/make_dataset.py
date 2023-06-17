@@ -93,14 +93,13 @@ def split_datafiles_by_compartment(cfg: DictConfig, dataset: Dataset, out_data_p
 def save_datafiles_split_by_compartment(cfg: DictConfig, dataset: Dataset, out_data_path: str) -> None:
     file_name_to_df_dict = split_datafiles_by_compartment(cfg, dataset, out_data_path)
 
-    suffix_str = cfg.suffix
     for file_name in file_name_to_df_dict.keys():
         for compartment in file_name_to_df_dict[file_name].keys():
             tmp = file_name_to_df_dict[file_name][compartment]
             tmp.index.name = "metabolite_or_isotopologue"
             tmp = tmp.reset_index()  # again index manipulation
             tmp = tmp.drop_duplicates()
-            output_file_name = f"{file_name}--{compartment}--{suffix_str}.tsv"
+            output_file_name = f"{file_name}--{compartment}.tsv"
             tmp.to_csv(os.path.join(out_data_path, output_file_name), sep="\t", header=True, index=False)
             logger.info(f"Saved the {compartment} compartment version of {file_name} in {out_data_path}")
 
