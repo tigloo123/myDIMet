@@ -15,7 +15,6 @@ from pydantic import BaseModel as PydanticBaseModel
 import constants
 from data import Dataset
 from helpers import flatten
-from visualization.abundance_bars import run_plot_abundance_bars
 from processing.differential_analysis import differential_comparison
 from visualization.abundance_bars import run_plot_abundance_bars
 
@@ -130,7 +129,7 @@ class DifferentialAnalysis(Method):
             ) is not None
             if not set(cfg.analysis.metabolites_to_plot.keys()).issubset(dataset.metadata_df["short_comp"]):
                 raise ValueError(
-                    f"Comparisons > Conditions or timepoints provided in the config file {diff} are not present in the metadata file, aborting"
+                    f"Comparisons > Conditions or timepoints provided in the config file are not present in the metadata file, aborting"
                 )
 
             if not set(cfg.analysis.time_sel).issubset(set(dataset.metadata_df["timepoint"])):
