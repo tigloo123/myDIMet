@@ -1,7 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Credits: Johanna Galvis, Macha Nikolski
-
+"""
+@author: Johanna Galvis, Florian Specque, Macha Nikolski
+"""
 import logging
 import os
 from typing import List, Any
@@ -132,7 +133,7 @@ def run_plot_abundance_bars(dataset: Dataset, out_plot_dir, cfg: DictConfig) -> 
     metadata_df = dataset.metadata_df
 
     ##############################
-    time_sel = cfg.analysis.time_sel  # locate where it is used
+    timepoints = cfg.analysis.timepoints  # locate where it is used
     metabolites = (
         cfg.analysis.metabolites
     )  # will define which metabolites are plotted in the abundance plot
@@ -151,13 +152,13 @@ def run_plot_abundance_bars(dataset: Dataset, out_plot_dir, cfg: DictConfig) -> 
         metadata_compartment_df: pd.DataFrame = metadata_df.loc[metadata_df["short_comp"] == c, :]
         compartment_df = dataset.compartmentalized_dfs["abundances_file_name"][c]
         # metadata and abundances time of interest
-        metada_sel = metadata_compartment_df.loc[metadata_compartment_df["timepoint"].isin(time_sel), :]
+        metada_sel = metadata_compartment_df.loc[metadata_compartment_df["timepoint"].isin(timepoints), :]
         abu_sel = compartment_df[metada_sel["name_to_plot"]]
 
         # total piled-up data:
         piled_sel = pile_up_abundance(abu_sel, metada_sel)
         piled_sel["condition"] = pd.Categorical(piled_sel["condition"], conditions)
-        piled_sel["timepoint"] = pd.Categorical(piled_sel["timepoint"], time_sel)
+        piled_sel["timepoint"] = pd.Categorical(piled_sel["timepoint"], timepoints)
 
         plotwidth = width_each_subfig * len(metabolites[c])
 

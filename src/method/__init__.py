@@ -95,7 +95,7 @@ class AbundancePlot(Method):
                 raise ValueError(
                     f"[Analysis > Metabolites > compartments] are missing from [Metadata > Compartments]"
                 )
-            if not set(cfg.analysis.time_sel).issubset(set(dataset.metadata_df["timepoint"])):
+            if not set(cfg.analysis.timepoints).issubset(set(dataset.metadata_df["timepoint"])):
                 raise ValueError(
                     f"[Analysis > Time sel] time points provided in the config file are not present in [Metadata > timepoint]"
                 )
@@ -135,7 +135,7 @@ class DifferentialAnalysis(Method):
                 raise ValueError(
                     f"Conditions provided for comparisons in the config file are not present in the metadata file, aborting"
                 )
-            if not set(cfg.analysis.time_sel).issubset(set(dataset.metadata_df["timepoint"])):
+            if not set(cfg.analysis.timepoints).issubset(set(dataset.metadata_df["timepoint"])):
                 raise ValueError(
                     f"Timepoints provided in the config file are not present in the metadata file, aborting"
                 )
