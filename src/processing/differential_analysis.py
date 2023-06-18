@@ -153,7 +153,7 @@ def compute_mann_whitney_allH0(vInterest, vBaseline):
 # TODO: removed "stat" as it seems not to be used anywhere but creates conflits with disfit
 def run_statistical_test(df: pd.DataFrame, comparison: List, test: str) -> pd.DataFrame:
     """
-    This is a switch function for running a pairwise differential analysis statistical test
+    This is a switch function for computing statistics for a pairwise differential analysis
     The comparison is a list with 2 sublists that contain column names
     """
     metabolites = df.index.values
@@ -370,7 +370,8 @@ def differential_comparison(
 ) -> None:
     """
     Differential comparison is performed on compartemnatalized versions of data files
-    Moreover, we replace zero values using the provided method
+    Attention: we replace zero values using the provided method
+    Writes the table with computed statistics in the relevant output directory
     """
     assert_literal(test, availtest_methods_type, "Available test")
     assert_literal(file_name, data_files_keys_type, "file name")
@@ -401,3 +402,19 @@ def differential_comparison(
                 output_file_name = os.path.join(out_table_dir, f"{base_file_name}_filter.tsv")
                 filtered_df.to_csv(output_file_name, index_label="metabolite", header=True, sep="\t")
                 logger.info(f"Saved the result in {output_file_name}")
+
+def multi_sample_compairson(
+        file_name: data_files_keys_type, dataset: Dataset, cfg: DictConfig, out_table_dir: str
+) -> None:
+    '''
+    Multi-sample comparison using Kruskal-Wallis non-parametric  method
+    for comparing k independent samples.
+    '''
+    assert_literal(file_name, data_files_keys_type, "file name")
+
+    impute_value = cfg.analysis.method.impute_values[file_name]
+    for compartment, compartmentalized_df in dataset.compartmentalized_dfs[file_name].items():
+        val_instead_zero = helpers.arg_repl_zero2value(impute_value, compartmentalized_df)
+        df = compartmentalized_df.replace(to_replace=0, value=val_instead_zero)
+
+    return
