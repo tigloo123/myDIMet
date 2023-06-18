@@ -65,7 +65,7 @@ class TestDifferentialTwogroupsAnalysis(TestCase):
         self.assertTrue(result.shape[0] == 2)
         self.assertTrue(any(np.array(result['row']) == np.array([0, 3])))
 
-    def test_run_distribution_fitting(self): # TODO: this test is slow, think if needed, or remove
+    def test_run_distribution_fitting(self): # TODO: this test is slow, think if necessary, or remove
         data = {'zscore': np.random.laplace(loc=0.0, scale=1.6, size=500)}
         df = pd.DataFrame(data)
         best_distribution, args_param = \
