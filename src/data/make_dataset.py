@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 def tabs_2_frames_dict(cfg, dataset: Dataset) -> dict:
     frames_dict = dict()
     df_list = [
-        (cfg.analysis.dataset.abundances_file_name, dataset.abundance_df),
-        (cfg.analysis.dataset.meanE_or_fracContrib_file_name, dataset.meanE_or_fracContrib_df),
-        (cfg.analysis.dataset.isotopologue_prop_file_name, dataset.isotopologue_prop_df),
-        (cfg.analysis.dataset.isotopologue_abs_file_name, dataset.isotopologue_abs_df),
+        (cfg.analysis.dataset.abundances, dataset.abundance_df),
+        (cfg.analysis.dataset.mean_enrichment, dataset.meanE_or_fracContrib_df),
+        (cfg.analysis.dataset.isotopologue_proportions, dataset.isotopologue_prop_df),
+        (cfg.analysis.dataset.isotopologues, dataset.isotopologue_abs_df),
     ]
 
     for file_name, df in df_list:
@@ -81,8 +81,8 @@ def split_datafiles_by_compartment(cfg: DictConfig, dataset: Dataset, out_data_p
     assert len(tabs_isotopologues) >= 1, "\nError, bad or no isotopologues input"
 
     for k in frames_dict.keys():
-        tmp_co_dic = helpers.df_to_dict_by_compartment(frames_dict[k], dataset.metadata_df)  # split by compartment
-        frames_dict[k] = tmp_co_dic
+        tmp_co_dict = helpers.df_to_dict_by_compartment(frames_dict[k], dataset.metadata_df)  # split by compartment
+        frames_dict[k] = tmp_co_dict
 
     frames_dict = drop_all_nan_metabolites_on_comp_frames(frames_dict, dataset.metadata_df)
     frames_dict = set_samples_names(frames_dict, dataset.metadata_df)

@@ -28,10 +28,10 @@ class DatasetConfig(BaseModel):
     # First condition is the reference condition (control)
     # Conditions should be a subset of the medata corresponding column
     conditions: ListConfig
-    abundances_file_name: str = "AbundanceCorrected"
-    meanE_or_fracContrib_file_name: str = "MeanEnrichment13C"
-    isotopologue_prop_file_name: str = "IsotopologuesProp"  # isotopologue proportions
-    isotopologue_abs_file_name: str = "IsotopologuesAbs"  # isotopologue absolute values
+    abundances: str = "AbundanceCorrected"
+    mean_enrichment: str = "MeanEnrichment13C"
+    isotopologue_proportions: str = "IsotopologuesProp"  # isotopologue proportions
+    isotopologues: str = "IsotopologuesAbs"  # isotopologue absolute values
 
     def build(self) -> "Dataset":
         return Dataset(config=self)
@@ -68,13 +68,13 @@ class Dataset(BaseModel):
         # start loading the dataframes
         file_paths = [
             ("metadata", os.path.join(self.raw_data_folder, self.config.metadata + ".csv")),
-            ("abundance", os.path.join(self.raw_data_folder, self.config.abundances_file_name + ".csv")),
+            ("abundance", os.path.join(self.raw_data_folder, self.config.abundances + ".csv")),
             (
                 "meanE_or_fracContrib",
-                os.path.join(self.raw_data_folder, self.config.meanE_or_fracContrib_file_name + ".csv"),
+                os.path.join(self.raw_data_folder, self.config.mean_enrichment + ".csv"),
             ),
-            ("isotopologue_prop", os.path.join(self.raw_data_folder, self.config.isotopologue_prop_file_name + ".csv")),
-            ("isotopologue_abs", os.path.join(self.raw_data_folder, self.config.isotopologue_abs_file_name + ".csv")),
+            ("isotopologue_prop", os.path.join(self.raw_data_folder, self.config.isotopologue_proportions + ".csv")),
+            ("isotopologue_abs", os.path.join(self.raw_data_folder, self.config.isotopologues + ".csv")),
         ]
         dfs = []
         for label, file_path in file_paths:
@@ -116,20 +116,20 @@ class Dataset(BaseModel):
         for c in compartments:
             file_paths = [
                 (
-                    "abundances_file_name",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}.tsv"),
+                    "abundances",
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances}--{c}.tsv"),
                 ),
                 (
-                    "meanE_or_fracContrib_file_name",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}.tsv"),
+                    "mean_enrichment",
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances}--{c}.tsv"),
                 ),
                 (
-                    "isotopologue_prop_file_name",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}.tsv"),
+                    "isotopologue_proportions",
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances}--{c}.tsv"),
                 ),
                 (
-                    "isotopologue_abs_file_name",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}.tsv"),
+                    "isotopologues",
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances}--{c}.tsv"),
                 ),
             ]
 
@@ -140,13 +140,13 @@ class Dataset(BaseModel):
                 logger.info("Loaded compartmentalized %s DF for %s", label, c)
 
     def get_file_for_label(self, label):
-        if label == "abundances_file_name":
-            return self.config.abundances_file_name
-        elif label == "meanE_or_fracContrib_file_name":
-            return self.config.meanE_or_fracContrib_file_name
-        elif label == "isotopologue_prop_file_name":
-            return self.config.isotopologue_prop_file_name
-        elif label == "isotopologue_abs_file_name":
-            return self.config.isotopologue_abs_file_name
+        if label == "abundances":
+            return self.config.abundances
+        elif label == "mean_enrichment":
+            return self.config.mean_enrichment
+        elif label == "isotopologue_proportions":
+            return self.config.isotopologue_proportions
+        elif label == "isotopologues":
+            return self.config.isotopologues
         else:
             raise ValueError(f"Unknown label {label}")

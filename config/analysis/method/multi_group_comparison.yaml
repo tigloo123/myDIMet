@@ -1,0 +1,26 @@
+_target_: method.MultiGroupComparisonConfig
+
+label: multi group
+name: Multi group statistical comparison using Kruskal-Wallis test
+
+grouping :
+  - condition
+  - timepoint
+
+correction_method : "bonferroni"
+
+datatypes:
+  - abundances
+  - mean_enrichment # same as fractional_contributions
+  - isotopologue_absolute
+  - isotopologue_proportions
+
+impute_values:
+  abundances: "min"
+  mean_enrichment: "min"
+  isotopologues: "min"
+  isotopologue_proportions: "min"
+
+thresholds:
+  padj: 0.05
+  absolute_log2FC: 1

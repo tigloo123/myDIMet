@@ -11,17 +11,17 @@ def assert_literal(value: str, lit_type, check: Optional[str] = None):
 
 
 data_files_keys = [
-    "abundances_file_name",
-    "meanE_or_fracContrib_file_name",
-    "isotopologue_prop_file_name",
-    "isotopologue_abs_file_name",
+    "abundances",
+    "mean_enrichment",
+    "isotopologue_proportions",
+    "isotopologues",
 ]
 
 data_files_keys_type = Literal[
-    "abundances_file_name",
-    "meanE_or_fracContrib_file_name",
-    "isotopologue_prop_file_name",
-    "isotopologue_abs_file_name",
+    "abundances",
+    "mean_enrichment",
+    "isotopologue_proportions",
+    "isotopologues",
 ]
 
 availtest_methods = ["MW", "KW", "ranksum", "Wcox", "Tt", "BrMu", "prm-scipy", "disfit", "none"]

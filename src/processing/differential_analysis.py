@@ -10,14 +10,11 @@ import logging
 import numpy as np
 import pandas as pd
 import scipy.stats
-import statsmodels.stats.multitest as ssm
 from functools import reduce
 import operator
 from omegaconf import DictConfig
 
 from constants import (
-    availtest_methods,
-    correction_methods,
     availtest_methods_type,
     assert_literal,
     data_files_keys_type,
@@ -256,24 +253,6 @@ def compute_p_value(df: pd.DataFrame, test: str, best_dist, args_param) -> pd.Da
     return df
 
 
-def compute_padj_version2(df, correction_alpha, correction_method):  # TODO: there is no version1, change name?
-    tmp = df.copy()
-    # inspired from R documentation in p.adjust :
-    tmp["pvalue"] = tmp[["pvalue"]].fillna(1)
-
-    (sgs, corrP, _, _) = ssm.multipletests(tmp["pvalue"], alpha=float(correction_alpha), method=correction_method)
-    df = df.assign(padj=corrP)
-    truepadj = []
-    for v, w in zip(df["pvalue"], df["padj"]):
-        if np.isnan(v):
-            truepadj.append(v)
-        else:
-            truepadj.append(w)
-    df = df.assign(padj=truepadj)
-
-    return df
-
-
 def filter_diff_results(ratiosdf, padj_cutoff, log2FC_abs_cutoff):
     ratiosdf["abslfc"] = ratiosdf["log2FC"].abs()
     ratiosdf = ratiosdf.loc[(ratiosdf["padj"] <= padj_cutoff) & (ratiosdf["abslfc"] >= log2FC_abs_cutoff), :]
@@ -358,7 +337,7 @@ def pairwise_comparison(
     df_good, df_no_padj = helpers.split_rows_by_threshold(
         df_good, "distance/span", cfg.analysis.method.qualityDistanceOverSpan
     )
-    df_good = compute_padj_version2(df_good, 0.05, cfg.analysis.method.correction_method)
+    df_good = helpers.compute_padj_version2(df_good, 0.05, cfg.analysis.method.correction_method)
 
     # re-integrate the "bad" sub-dataframes to the full dataframe
     result = helpers.concatenate_dataframes(df_good, df_bad, df_no_padj)
@@ -382,28 +361,29 @@ def differential_comparison(
         df = compartmentalized_df.replace(to_replace=0, value=val_instead_zero)
 
         for comparison in cfg.analysis.comparisons:
-            if cfg.analysis.method.comparison_mode == "pairwise":
-                result = pairwise_comparison(df, dataset, cfg, comparison, test)
-                result["compartment"] = compartment
-                result = reorder_columns_diff_end(result)
-                result = result.sort_values(["padj", "distance/span"], ascending=[True, False])
-                comp = "-".join(map(lambda x: "-".join(x), comparison))
-                base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}-{comp}-{test}"
-                result.to_csv(
-                    os.path.join(out_table_dir, f"{base_file_name}.tsv"),
-                    index_label="metabolite",
-                    header=True,
-                    sep="\t",
-                )
-                # filtered by thresholds :
-                filtered_df = filter_diff_results(
-                    result, cfg.analysis.thresholds.padj, cfg.analysis.thresholds.absolute_log2FC
-                )
-                output_file_name = os.path.join(out_table_dir, f"{base_file_name}_filter.tsv")
-                filtered_df.to_csv(output_file_name, index_label="metabolite", header=True, sep="\t")
-                logger.info(f"Saved the result in {output_file_name}")
+#            if cfg.analysis.method.comparison_mode == "pairwise":
+            result = pairwise_comparison(df, dataset, cfg, comparison, test)
+            result["compartment"] = compartment
+            result = reorder_columns_diff_end(result)
+            result = result.sort_values(["padj", "distance/span"], ascending=[True, False])
+            comp = "-".join(map(lambda x: "-".join(x), comparison))
+            base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}-{comp}-{test}"
+            output_file_name = os.path.join(out_table_dir, f"{base_file_name}.tsv")
+            result.to_csv(
+                output_file_name,
+                index_label="metabolite",
+                header=True,
+                sep="\t",
+            )
+            # filtered by thresholds :
+            # filtered_df = filter_diff_results(
+            #     result, cfg.analysis.thresholds.padj, cfg.analysis.thresholds.absolute_log2FC
+            # )
+            # output_file_name = os.path.join(out_table_dir, f"{base_file_name}_filter.tsv")
+            # filtered_df.to_csv(output_file_name, index_label="metabolite", header=True, sep="\t")
+            logger.info(f"Saved the result in {output_file_name}")
 
-def multi_sample_compairson(
+def multi_group_compairson(
         file_name: data_files_keys_type, dataset: Dataset, cfg: DictConfig, out_table_dir: str
 ) -> None:
     '''
@@ -417,4 +397,24 @@ def multi_sample_compairson(
         val_instead_zero = helpers.arg_repl_zero2value(impute_value, compartmentalized_df)
         df = compartmentalized_df.replace(to_replace=0, value=val_instead_zero)
 
-    return
+        conditions_list = helpers.first_column_for_column_values(
+            df=dataset.metadata_df, columns=cfg.analysis.method.grouping,
+            values=cfg.analysis.conditions
+        )
+        # flatten the list of lists and select the subset of column names present in the sub dataframe
+        columns = [i for i in reduce(operator.concat, conditions_list) if i in df.columns]
+        df4c = df[columns].copy()
+        df4c = df4c[(df4c.T != 0).any()]  # delete rows being zero everywhere
+        df4c = df4c.dropna(axis=0, how="all")
+
+        df4c = helpers.row_wise_nanstd_reduction(df4c)
+        this_comparison = [list(filter(lambda x: x in columns, sublist)) for sublist in conditions_list]
+        df4c = helpers.apply_multi_group_kruskal_wallis(df4c, this_comparison)
+        df4c = helpers.compute_padj_version2(df4c, 0.05, cfg.analysis.method.correction_method)
+        # filtered_df = df4c.loc[df4c['padj'] <= cfg.analysis.method.thresholds['padj']]
+
+        base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}--multigroup"
+        output_file_name = os.path.join(out_table_dir, f"{base_file_name}.tsv")
+        df4c.to_csv(output_file_name, index_label="metabolite", header=True, sep="\t")
+        logger.info(f"Saved the result in {output_file_name}")
+

@@ -8,8 +8,7 @@ import os
 from typing import Dict, List
 import scipy
 from collections.abc import Iterable
-
-import constants
+import statsmodels.stats.multitest as ssm
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -19,6 +18,29 @@ from functools import reduce
 
 from constants import assert_literal, overlap_methods_types
 
+
+# TODO: there is no version1, change name?
+def compute_padj_version2(df: pd.DataFrame, correction_alpha: float, correction_method: str) -> pd.DataFrame:
+    '''
+    Performs multiple hypothesis testing correction on the p-values in the DataFrame
+    Deals with the situation where pvalue column can contain np.nan values
+    Adds a new column called "padj" with the adjusted p-values.
+    '''
+    tmp = df.copy()
+    # inspired from R documentation in p.adjust :
+    tmp["pvalue"] = tmp[["pvalue"]].fillna(1)
+
+    (sgs, corrP, _, _) = ssm.multipletests(tmp["pvalue"], alpha=float(correction_alpha), method=correction_method)
+    df = df.assign(padj=corrP)
+    truepadj = []
+    for v, w in zip(df["pvalue"], df["padj"]):
+        if np.isnan(v):
+            truepadj.append(v)
+        else:
+            truepadj.append(w)
+    df = df.assign(padj=truepadj)
+
+    return df
 
 def row_wise_nanstd_reduction(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -79,6 +101,25 @@ def calculate_gmean(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
     mask = df[f"gmean_{2}"] == 0
     df[ratio_col] = df[f"gmean_{1}"] / np.where(mask, 1e-10, df[f"gmean_{2}"])
 
+    return df
+
+
+def apply_multi_group_kruskal_wallis(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
+    '''
+    Row-wise multi-group Kruskal-Wallis test; groups contains sublists of columns
+    Applies scipy Kruskal-Wallis test to each row for groups defined by columns in 'groups',
+    adds the resulting pvalue to a new column and returns the updated data frame
+    '''
+    p_values = []
+    for _, row in df.iterrows():
+        # Create a list of groups based on the columns in cols
+        groups_values = [row[group] for group in groups]
+
+        # Apply the Kruskal-Wallis test to the groups
+        _, p_value = scipy.stats.kruskal(*groups_values, nan_policy='omit')
+        p_values.append(p_value)
+
+    df['pvalue'] = p_values
     return df
 
 

@@ -1,8 +1,6 @@
 import logging
 import os
 import sys
-from pathlib import Path
-from typing import Optional, List, Literal, Set, Any, Dict
 
 from omegaconf import DictConfig, OmegaConf, ListConfig, open_dict
 from omegaconf.errors import ConfigAttributeError
@@ -12,8 +10,9 @@ from pydantic import BaseModel as PydanticBaseModel
 import constants
 from data import Dataset
 from helpers import flatten
-from processing.differential_analysis import differential_comparison
+from processing.differential_analysis import differential_comparison, multi_group_compairson
 from visualization.abundance_bars import run_plot_abundance_bars
+from constants import assert_literal, data_files_keys_type
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +59,19 @@ class DifferentialAnalysisConfig(MethodConfig):
         return DifferentialAnalysis(config=self)
 
 
+class MultiGroupComparisonConfig(MethodConfig):
+    """
+    Sets default values or fills them from the method yaml file
+    """
+
+    grouping: ListConfig = ["condition", "timepoint"]
+    correction_method: str = "bonferroni"
+    impute_values: DictConfig
+    thresholds: DictConfig
+
+    def build(self) -> "MultiGroupComparison":
+        return MultiGroupComparison(config=self)
+
 class Method(BaseModel):
     config: MethodConfig
 
@@ -70,6 +82,9 @@ class Method(BaseModel):
         logger.info("Not instantialted in the parent class.")
         raise NotImplementedError
 
+    def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
+        logger.info("Not instantialted in the parent class.")
+        raise NotImplementedError
 
 class AbundancePlot(Method):
     config: AbundancePlotConfig
@@ -124,20 +139,26 @@ class DifferentialAnalysis(Method):
             logger.info(f"Running differential analysis of {dataset.get_file_for_label(file_name)} using {test} test")
             differential_comparison(file_name, dataset, cfg, test, out_table_dir=out_table_dir)
 
-    def check_expectations(self, cfg, dataset):
+    def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
         # check that necessary information is provided in the analysis config
         try:
-            float(cfg.analysis.thresholds.padj) is not None and \
-                float(cfg.analysis.thresholds.absolute_log2FC) is not None
+            float(cfg.analysis.method.thresholds["padj"]) is not None and \
+                float(cfg.analysis.method.thresholds["absolute_log2FC"]) is not None
+
+            if not (all(len(c) == 2 for c in cfg.analysis.comparisons)):
+                raise ValueError(
+                    f"Number of conditions has to be 2 for a pairwise comparison, see config file"
+                )
 
             if not all(any(item[0] in set(dataset.metadata_df["condition"]) for item in sublist)
                        for sublist in cfg.analysis.comparisons):
                 raise ValueError(
                     f"Conditions provided for comparisons in the config file are not present in the metadata file, aborting"
                 )
-            if not set(cfg.analysis.timepoints).issubset(set(dataset.metadata_df["timepoint"])):
+            if not all(any(item[1] in set(dataset.metadata_df["timepoint"]) for item in sublist)
+                       for sublist in cfg.analysis.comparisons):
                 raise ValueError(
-                    f"Timepoints provided in the config file are not present in the metadata file, aborting"
+                    f"Timepoints provided for comparisons in the config file are not present in the metadata file, aborting"
                 )
             # all values in the comparisons arrays of arrays are in the metadata, either as conditions or timepoints
             conditions_and_tp = set(dataset.metadata_df["condition"]).union(set(dataset.metadata_df["timepoint"]))
@@ -148,10 +169,43 @@ class DifferentialAnalysis(Method):
                     f"Comparisons > Conditions or timepoints provided in the config file {diff} are not present in the metadata file, aborting"
                 )
             # comparison_mode is one of the constant values
-            constants.assert_literal(cfg.analysis.comparison_mode, constants.comparison_modes_types, "comparison_mode")
+            #constants.assert_literal(cfg.analysis.comparison_mode, constants.comparison_modes_types, "comparison_mode")
         except ConfigAttributeError as e:
             logger.error(f"Mandatory parameter not provided in the config file:{e}, aborting")
             sys.exit(1)
+        except ValueError as e:
+            logger.error(f"Data inconsistency:{e}")
+            sys.exit(1)
+
+class MultiGroupComparison(Method):
+    config: MultiGroupComparisonConfig
+
+    def run(self, cfg: DictConfig, dataset: Dataset) -> None:
+        logger.info(f"The current working directory is {os.getcwd()}")
+        logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
+        logger.info("Will perform multi group analysis, with the following config: %s", self.config)
+        dataset.load_compartmentalized_data()
+        out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
+        os.makedirs(out_table_dir, exist_ok=True)
+        self.check_expectations(cfg, dataset)
+
+        for file_name in cfg.analysis.datatypes:
+            logger.info(f"Running multi group analysis of {dataset.get_file_for_label(file_name)}")
+            multi_group_compairson(file_name, dataset, cfg, out_table_dir=out_table_dir)
+
+    def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
+        try:
+            [assert_literal(dt, data_files_keys_type, "datatype") for dt in cfg.analysis.datatypes]
+
+            if not set([sublist[0] for sublist in cfg.analysis.conditions]).issubset(set(dataset.metadata_df["condition"])):
+                raise ValueError(
+                    f"Conditions provided for comparisons in the config file are not present in the metadata file, aborting"
+                )
+            if not set([sublist[1] for sublist in cfg.analysis.conditions]).issubset(set(dataset.metadata_df["timepoint"])):
+                raise ValueError(
+                    f"Timepoints provided for comparisons in the config file are not present in the metadata file, aborting"
+                )
+
         except ValueError as e:
             logger.error(f"Data inconsistency:{e}")
             sys.exit(1)

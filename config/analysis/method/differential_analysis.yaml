@@ -7,21 +7,20 @@ grouping :
   - condition
   - timepoint
 
-comparison_mode : pairwise
 qualityDistanceOverSpan : -0.3
 correction_method : "bonferroni"
 
 impute_values:
-  abundances_file_name: "min"
-  meanE_or_fracContrib_file_name: "min"
-  isotopologue_abs_file_name: "min"
-  isotopologue_prop_file_name: "min"
+  abundances: "min"
+  mean_enrichment: "min"
+  isotopologues: "min"
+  isotopologue_proportions: "min"
 
 statistical_test:
-  abundances_file_name: KW
-  meanE_or_fracContrib_file_name: KW
-  isotopologue_abs_file_name: KW
-  isotopologue_prop_file_name: KW
+  abundances: KW
+  mean_enrichment: KW
+  isotopologues: KW
+  isotopologue_proportions: KW
 
 thresholds:
   padj: 0.05

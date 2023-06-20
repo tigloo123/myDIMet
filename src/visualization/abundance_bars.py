@@ -150,7 +150,7 @@ def run_plot_abundance_bars(dataset: Dataset, out_plot_dir, cfg: DictConfig) -> 
     compartments = metadata_df["short_comp"].unique().tolist()
     for c in compartments:
         metadata_compartment_df: pd.DataFrame = metadata_df.loc[metadata_df["short_comp"] == c, :]
-        compartment_df = dataset.compartmentalized_dfs["abundances_file_name"][c]
+        compartment_df = dataset.compartmentalized_dfs["abundances"][c]
         # metadata and abundances time of interest
         metada_sel = metadata_compartment_df.loc[metadata_compartment_df["timepoint"].isin(timepoints), :]
         abu_sel = compartment_df[metada_sel["name_to_plot"]]

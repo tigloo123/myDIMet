@@ -129,6 +129,28 @@ class TestHelpers(TestCase):
             "c4": [10, np.nan, 34, np.nan],
         }
         df = pd.DataFrame(data)
-        result = helpers.countnan_samples(df, [["c1", "c2"],["c3", "c4"]])
+        result = helpers.countnan_samples(df, [["c1", "c2"], ["c3", "c4"]])
         self.assertTrue(np.any(np.array(result['count_nan_samples_group1']) == np.array([0, 2, 0, 1])))
         self.assertTrue(np.any(np.array(result['count_nan_samples_group2']) == np.array([1, 2, 1, 1])))
+
+    def test_apply_multi_group_kruskal_wallis(self):
+        np.random.seed(42)
+        data = np.random.randint(0, 1000, size=(5, 12))
+        df = pd.DataFrame(data, columns=['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'])
+
+        cols = [['A', 'B', 'C'], ['D', 'E', 'F'], ['G', 'H', 'I']]
+        result = helpers.apply_multi_group_kruskal_wallis(df, cols)
+        self.assertTrue(np.allclose(result['pvalue'].values, np.array([0.56, 0.56, 0.32, 0.07, 0.14]), 2))
+
+
+    def test_compute_padj_version2(self):
+        data = {
+            'pvalue': [0.01, 0.02, np.nan, 0.03, 0.04],
+            'other_column': [1, 2, 3, 4, 5]
+        }
+        df = pd.DataFrame(data)
+        correction_alpha = 0.05
+        correction_method = 'fdr_bh'
+        df = helpers.compute_padj_version2(df, correction_alpha, correction_method)
+        self.assertAlmostEqual(df['padj'][1], 0.05, 3)
+        self.assertTrue(np.isnan(df['padj'][2]))
