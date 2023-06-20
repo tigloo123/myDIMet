@@ -1,0 +1,17 @@
+_target_: method.IsotopolPropStackedPlotConfig
+
+label: isotopologues proportions stacked-bars plot
+name: Generate isotopologues stack plots
+
+# here put 'hidden' advanced defaults
+max_nb_carbons_possible: 12
+appearance_separated_time: True # adds a space between timepoints, conditions stay comparative
+separated_plots_by_condition: False # prints each condition in independent plots
+plots_height: !!float 4.8
+sharey: False # share y axis across subplots
+x_ticks_text_size: 18
+y_ticks_text_size: 19
+
+
+
+
