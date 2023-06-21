@@ -1,6 +1,6 @@
 _target_: method.IsotopolPropStackedPlotConfig
 
-label: isotopologues proportions stacked-bars plot
+label: isotopologues-stacked-bars-plot
 name: Generate isotopologues stack plots
 
 # here put 'hidden' advanced defaults
