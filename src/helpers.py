@@ -227,9 +227,9 @@ def df_to_dict_by_compartment(df: pd.DataFrame, metadata: pd.DataFrame) -> dict:
     """
     output_dict = dict()
     for compartment in metadata["short_comp"].unique():
-        metada_co = metadata.loc[metadata["short_comp"] == compartment, :]
-        df_co = df.loc[:, metada_co["original_name"]]
-        output_dict[compartment] = df_co
+        sample_names = metadata[metadata["short_comp"] == compartment]["original_name"]
+        compartment_df = df[["ID"]+list(sample_names)]
+        output_dict[compartment] = compartment_df
     return output_dict
 
 
@@ -252,20 +252,17 @@ def detect_and_create_dir(namenesteddir):  # TODO : replace by os.makedirs(file_
         os.makedirs(namenesteddir)
 
 
-def verify_metadata_sample_not_duplicated(metadata_df: pd.DataFrame) -> None: # TODO: move to dataset check_expectations
-    def yield_repeated_elems(mylist):
-        occur_dic = dict(map(lambda x: (x, list(mylist).count(x)), mylist))  # credits: w3resource.com
-        repeated_elems = list()
-        for k in occur_dic.keys():
-            if occur_dic[k] > 1:
-                repeated_elems.append(k)
-        return repeated_elems
+def verify_metadata_sample_not_duplicated(metadata_df: pd.DataFrame) -> None:
+    '''
+    checks for duplicated sample names in a metadata DataFrame and raises an
+    error if any conflicts are detected.
+    '''
+    sample_counts = metadata_df["name_to_plot"].value_counts()
+    duplicated_samples = sample_counts[sample_counts > 1].index.tolist()
 
-    sample_duplicated = yield_repeated_elems(list(metadata_df["name_to_plot"]))
-    if len(sample_duplicated) > 0:
-        txt_errors = f"-> duplicated sample names: {sample_duplicated}\n"
-        raise ValueError(f"Error, found these conflicts in your metadata:\n{txt_errors}")
-
+    if duplicated_samples:
+        txt_errors = f"-> duplicated sample names: {duplicated_samples}\n"
+        raise ValueError(f"Found conflicts in your metadata:\n{txt_errors}")
 
 def a12(lst1, lst2, rev=True):
     """
@@ -441,3 +438,33 @@ def absolute_geommean_diff(b_values: np.array, a_values: np.array):
     m_a = compute_gmean_nonan(a_values)
     diff_absolute = abs(m_b - m_a)
     return diff_absolute
+
+
+def drop_all_nan_metabolites_on_comp_frames(frames_dict: Dict, metadata: pd.DataFrame) -> Dict:
+    """ metabolites must be in rows """
+    compartments = metadata["short_comp"].unique().tolist()
+    for dataset in frames_dict.keys():
+        for compartment in compartments:
+            tmp = frames_dict[dataset][compartment]
+            tmp.dropna(how="all", subset=tmp.columns.difference(["ID"]), axis=0)
+            #tmp = tmp.dropna(how="all", axis=0)
+            frames_dict[dataset][compartment] = tmp
+    return frames_dict
+
+def set_samples_names(frames_dict: Dict, metadata: pd.DataFrame) -> Dict:
+    '''
+    Given a dictionary where each dataset has been split in compartment dataframes,
+    goes through them and renames all the columns (sample names) to those that we
+    want to see on the plot; excludes the ID column from this
+    '''
+    for dataset, compartments_dict in frames_dict.items():
+        for compartment, df in compartments_dict.items():
+            original_names = metadata[metadata["short_comp"] == compartment]["original_name"]
+            new_names = metadata[metadata["short_comp"] == compartment]["name_to_plot"]
+            renamed_columns = {old: new for old, new in zip(original_names, new_names)
+                               if old != "ID"}
+            renamed_df = df.rename(columns=renamed_columns)
+            frames_dict[dataset][compartment] = renamed_df
+
+    return frames_dict
+

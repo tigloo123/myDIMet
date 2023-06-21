@@ -16,26 +16,22 @@ class TestHelpers(TestCase):
         metadata_dict = {
             "name_to_plot": ["Ctrl_cell_T0-1", "Ctrl_cell_T0-2"],
             "condition": ["Control", "Control"],
-            "timepoint": [
-                "T0",
-                "T1",
-            ],
+            "timepoint": ["T0", "T1"],
             "timenum": [0, 1],
             "short_comp": ["cell", "medium"],
             "original_name": ["MCF001089_TD01", "MCF001089_TD02"],
         }
         abundances_dict = {
-            "metabolite_or_isotopologue": ["Fructose_1, 6 - bisphosphate", "Fumaric_acid"],
+            "ID": ["Fructose", "Fumaric_acid"],
             "MCF001089_TD01": [81.467, 1765.862],
             "MCF001089_TD02": [31.663, 2350.101],
-            "MCF001089_TD07": [488.622, 565.610],
         }
 
         metadata_df = pd.DataFrame(metadata_dict)
         abundances_df = pd.DataFrame(abundances_dict)
         d = helpers.df_to_dict_by_compartment(df=abundances_df, metadata=metadata_df)
         self.assertEqual(list(d.keys()), ["cell", "medium"])
-        self.assertEqual(d["cell"].shape, (2, 1))
+        self.assertEqual(d["cell"].shape, (2, 2))
         self.assertAlmostEqual(d["cell"].at[0, "MCF001089_TD01"], 81.47, 2)
 
     def test_select_rows_by_fixed_values(self):
@@ -142,7 +138,6 @@ class TestHelpers(TestCase):
         result = helpers.apply_multi_group_kruskal_wallis(df, cols)
         self.assertTrue(np.allclose(result['pvalue'].values, np.array([0.56, 0.56, 0.32, 0.07, 0.14]), 2))
 
-
     def test_compute_padj_version2(self):
         data = {
             'pvalue': [0.01, 0.02, np.nan, 0.03, 0.04],
@@ -154,3 +149,9 @@ class TestHelpers(TestCase):
         df = helpers.compute_padj_version2(df, correction_alpha, correction_method)
         self.assertAlmostEqual(df['padj'][1], 0.05, 3)
         self.assertTrue(np.isnan(df['padj'][2]))
+
+    def test_verify_metadata_sample_not_duplicated(self):
+        metadata = pd.DataFrame({
+            "name_to_plot": ["Sample1", "Sample2", "Sample3", "Sample2", "Sample4"]
+        })
+        self.assertRaises(ValueError, helpers.verify_metadata_sample_not_duplicated,metadata)

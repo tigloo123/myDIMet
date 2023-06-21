@@ -8,6 +8,8 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import ListConfig
 from pydantic import BaseModel as PydanticBaseModel
 
+import helpers
+
 
 class BaseModel(PydanticBaseModel):
     class Config:
@@ -30,8 +32,8 @@ class DatasetConfig(BaseModel):
     conditions: ListConfig
     abundances: str = "AbundanceCorrected"
     mean_enrichment: str = "MeanEnrichment13C"
-    isotopologue_proportions: str = "IsotopologuesProp"  # isotopologue proportions
-    isotopologues: str = "IsotopologuesAbs"  # isotopologue absolute values
+    isotopologue_proportions: str = "IsotopologuesProportions"  # isotopologue proportions
+    isotopologues: str = "Isotopologues"  # isotopologue absolute values
 
     def build(self) -> "Dataset":
         return Dataset(config=self)
@@ -43,12 +45,12 @@ class Dataset(BaseModel):
     processed_data_folder: str = None
     sub_folder_absolute: str = None
     metadata_df: Optional[pd.DataFrame] = None
-    abundance_df: Optional[pd.DataFrame] = None
-    meanE_or_fracContrib_df: Optional[pd.DataFrame] = None
-    isotopologue_prop_df: Optional[pd.DataFrame] = None
-    isotopologue_abs_df: Optional[pd.DataFrame] = None
+    abundances_df: Optional[pd.DataFrame] = None
+    mean_enrichment_df: Optional[pd.DataFrame] = None
+    isotopologue_proportions: Optional[pd.DataFrame] = None
+    isotopologues_df: Optional[pd.DataFrame] = None
     available_datasets: Set[
-        Literal["metadata", "abundance", "meanE_or_fracContrib", "isotopologue_prop", "isotopologue_abs"]
+        Literal["metadata", "abundances", "mean_enrichment", "isotopologue_proportions", "isotopologues"]
     ] = set()
     compartmentalized_dfs: Dict[str, Dict[str, pd.DataFrame]] = {}
 
@@ -68,13 +70,10 @@ class Dataset(BaseModel):
         # start loading the dataframes
         file_paths = [
             ("metadata", os.path.join(self.raw_data_folder, self.config.metadata + ".csv")),
-            ("abundance", os.path.join(self.raw_data_folder, self.config.abundances + ".csv")),
-            (
-                "meanE_or_fracContrib",
-                os.path.join(self.raw_data_folder, self.config.mean_enrichment + ".csv"),
-            ),
-            ("isotopologue_prop", os.path.join(self.raw_data_folder, self.config.isotopologue_proportions + ".csv")),
-            ("isotopologue_abs", os.path.join(self.raw_data_folder, self.config.isotopologues + ".csv")),
+            ("abundances", os.path.join(self.raw_data_folder, self.config.abundances + ".csv")),
+            ("mean_enrichment", os.path.join(self.raw_data_folder, self.config.mean_enrichment + ".csv")),
+            ("isotopologue_proportions", os.path.join(self.raw_data_folder, self.config.isotopologue_proportions + ".csv")),
+            ("isotopologues", os.path.join(self.raw_data_folder, self.config.isotopologues + ".csv")),
         ]
         dfs = []
         for label, file_path in file_paths:
@@ -90,10 +89,10 @@ class Dataset(BaseModel):
 
         (
             self.metadata_df,
-            self.abundance_df,
-            self.meanE_or_fracContrib_df,
-            self.isotopologue_prop_df,
-            self.isotopologue_abs_df,
+            self.abundances_df,
+            self.mean_enrichment_df,
+            self.isotopologue_proportions,
+            self.isotopologues_df,
         ) = dfs
 
         # log the first 5 rows of the metadata
@@ -111,33 +110,30 @@ class Dataset(BaseModel):
                 f"Conditions {self.config.conditions} are not a subset of the metadata declared conditions"
             )
 
-    def load_compartmentalized_data(self) -> pd.DataFrame:
-        compartments = self.metadata_df["short_comp"].unique().tolist()
-        for c in compartments:
-            file_paths = [
-                (
-                    "abundances",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances}--{c}.tsv"),
-                ),
-                (
-                    "mean_enrichment",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances}--{c}.tsv"),
-                ),
-                (
-                    "isotopologue_proportions",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances}--{c}.tsv"),
-                ),
-                (
-                    "isotopologues",
-                    os.path.join(self.processed_data_folder, f"{self.config.abundances}--{c}.tsv"),
-                ),
-            ]
+        helpers.verify_metadata_sample_not_duplicated(self.metadata_df)
 
-            for label, fp in file_paths:
-                if label not in self.compartmentalized_dfs:
-                    self.compartmentalized_dfs[label] = {}
-                self.compartmentalized_dfs[label][c] = pd.read_csv(fp, sep="\t", header=0, index_col=0)
-                logger.info("Loaded compartmentalized %s DF for %s", label, c)
+    def split_datafiles_by_compartment(self) -> None:
+        frames_dict = {}
+        for data_file_label in self.available_datasets:
+            if 'metadata' in data_file_label: continue
+            dataframe_label = data_file_label + "_df"  # TODO: this is fragile!
+            tmp_co_dict = helpers.df_to_dict_by_compartment(getattr(self, dataframe_label),
+                                                            self.metadata_df)  # split by compartment
+            frames_dict[data_file_label] = tmp_co_dict
+
+        frames_dict = helpers.drop_all_nan_metabolites_on_comp_frames(frames_dict, self.metadata_df)
+        frames_dict = helpers.set_samples_names(frames_dict, self.metadata_df)
+        self.compartmentalized_dfs = frames_dict
+
+    def save_datafiles_split_by_compartment(self) -> None:
+        os.makedirs(self.processed_data_folder, exist_ok=True)
+        out_data_path = self.processed_data_folder
+        for file_name in self.compartmentalized_dfs.keys():
+            for compartment in self.compartmentalized_dfs[file_name].keys():
+                df = self.compartmentalized_dfs[file_name][compartment]
+                output_file_name = f"{self.get_file_for_label(file_name)}-{compartment}.csv"
+                df.to_csv(os.path.join(out_data_path, output_file_name), sep="\t", header=True, index=False)
+                logger.info(f"Saved the {compartment} compartment version of {file_name} in {out_data_path}")
 
     def get_file_for_label(self, label):
         if label == "abundances":

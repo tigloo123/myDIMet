@@ -12,7 +12,7 @@ correction_method : "bonferroni"
 datatypes:
   - abundances
   - mean_enrichment # same as fractional_contributions
-  - isotopologue_absolute
+  - isotopologues
   - isotopologue_proportions
 
 impute_values:

@@ -357,11 +357,11 @@ def differential_comparison(
 
     impute_value = cfg.analysis.method.impute_values[file_name]
     for compartment, compartmentalized_df in dataset.compartmentalized_dfs[file_name].items():
-        val_instead_zero = helpers.arg_repl_zero2value(impute_value, compartmentalized_df)
-        df = compartmentalized_df.replace(to_replace=0, value=val_instead_zero)
+        df = compartmentalized_df.drop("ID", axis=1)
+        val_instead_zero = helpers.arg_repl_zero2value(impute_value, df)
+        df = df.replace(to_replace=0, value=val_instead_zero)
 
         for comparison in cfg.analysis.comparisons:
-#            if cfg.analysis.method.comparison_mode == "pairwise":
             result = pairwise_comparison(df, dataset, cfg, comparison, test)
             result["compartment"] = compartment
             result = reorder_columns_diff_end(result)
@@ -375,12 +375,6 @@ def differential_comparison(
                 header=True,
                 sep="\t",
             )
-            # filtered by thresholds :
-            # filtered_df = filter_diff_results(
-            #     result, cfg.analysis.thresholds.padj, cfg.analysis.thresholds.absolute_log2FC
-            # )
-            # output_file_name = os.path.join(out_table_dir, f"{base_file_name}_filter.tsv")
-            # filtered_df.to_csv(output_file_name, index_label="metabolite", header=True, sep="\t")
             logger.info(f"Saved the result in {output_file_name}")
 
 def multi_group_compairson(
@@ -394,8 +388,9 @@ def multi_group_compairson(
 
     impute_value = cfg.analysis.method.impute_values[file_name]
     for compartment, compartmentalized_df in dataset.compartmentalized_dfs[file_name].items():
-        val_instead_zero = helpers.arg_repl_zero2value(impute_value, compartmentalized_df)
-        df = compartmentalized_df.replace(to_replace=0, value=val_instead_zero)
+        df = compartmentalized_df.drop("ID", axis=1)
+        val_instead_zero = helpers.arg_repl_zero2value(impute_value, df)
+        df = df.replace(to_replace=0, value=val_instead_zero)
 
         conditions_list = helpers.first_column_for_column_values(
             df=dataset.metadata_df, columns=cfg.analysis.method.grouping,
@@ -411,7 +406,6 @@ def multi_group_compairson(
         this_comparison = [list(filter(lambda x: x in columns, sublist)) for sublist in conditions_list]
         df4c = helpers.apply_multi_group_kruskal_wallis(df4c, this_comparison)
         df4c = helpers.compute_padj_version2(df4c, 0.05, cfg.analysis.method.correction_method)
-        # filtered_df = df4c.loc[df4c['padj'] <= cfg.analysis.method.thresholds['padj']]
 
         base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}--multigroup"
         output_file_name = os.path.join(out_table_dir, f"{base_file_name}.tsv")

@@ -6,8 +6,6 @@ from omegaconf import DictConfig, OmegaConf, ListConfig, open_dict
 from omegaconf.errors import ConfigAttributeError
 
 from pydantic import BaseModel as PydanticBaseModel
-
-import constants
 from data import Dataset
 from helpers import flatten
 from processing.differential_analysis import differential_comparison, multi_group_compairson
@@ -91,12 +89,11 @@ class AbundancePlot(Method):
 
     def run(self, cfg: DictConfig, dataset: Dataset) -> None:
         logger.info("Will plot the abundance plot, with the following config: %s", self.config)
-        dataset.load_compartmentalized_data()
         if not ("metabolites" in cfg.analysis.keys()):  # plotting for _all_ metabolites
             logger.warning("No selected metabolites provided, plotting for all; might result in ugly too wide plots")
             with open_dict(cfg):
                 for c in set(dataset.metadata_df["short_comp"]):
-                    cfg.analysis["metabolites"] = {c: list(dataset.abundance_df["metabolite_or_isotopologue"])}
+                    cfg.analysis["metabolites"] = {c: list(dataset.abundances_df["ID"])}
 
         self.check_expectations(cfg, dataset)
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
@@ -129,7 +126,6 @@ class DifferentialAnalysis(Method):
         logger.info(f"The current working directory is {os.getcwd()}")
         logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
         logger.info("Will perform differential analysis, with the following config: %s", self.config)
-        dataset.load_compartmentalized_data()
         out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
         os.makedirs(out_table_dir, exist_ok=True)
         self.check_expectations(cfg, dataset)
@@ -169,7 +165,6 @@ class DifferentialAnalysis(Method):
                     f"Comparisons > Conditions or timepoints provided in the config file {diff} are not present in the metadata file, aborting"
                 )
             # comparison_mode is one of the constant values
-            #constants.assert_literal(cfg.analysis.comparison_mode, constants.comparison_modes_types, "comparison_mode")
         except ConfigAttributeError as e:
             logger.error(f"Mandatory parameter not provided in the config file:{e}, aborting")
             sys.exit(1)
@@ -184,7 +179,6 @@ class MultiGroupComparison(Method):
         logger.info(f"The current working directory is {os.getcwd()}")
         logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
         logger.info("Will perform multi group analysis, with the following config: %s", self.config)
-        dataset.load_compartmentalized_data()
         out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
         os.makedirs(out_table_dir, exist_ok=True)
         self.check_expectations(cfg, dataset)
@@ -193,6 +187,7 @@ class MultiGroupComparison(Method):
             logger.info(f"Running multi group analysis of {dataset.get_file_for_label(file_name)}")
             multi_group_compairson(file_name, dataset, cfg, out_table_dir=out_table_dir)
 
+    #TODO: add expectations on the compartementalised dfs?
     def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
         try:
             [assert_literal(dt, data_files_keys_type, "datatype") for dt in cfg.analysis.datatypes]
