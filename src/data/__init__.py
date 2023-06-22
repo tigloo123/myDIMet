@@ -135,6 +135,7 @@ class Dataset(BaseModel):
                 df.to_csv(os.path.join(out_data_path, output_file_name), sep="\t", header=True, index=False)
                 logger.info(f"Saved the {compartment} compartment version of {file_name} in {out_data_path}")
 
+
     def get_file_for_label(self, label):
         if label == "abundances":
             return self.config.abundances
@@ -146,3 +147,36 @@ class Dataset(BaseModel):
             return self.config.isotopologues
         else:
             raise ValueError(f"Unknown label {label}")
+
+    def load_compartmentalized_data_version2(self) -> pd.DataFrame:
+        # version above had problem with loading more than one compartment for each label:
+        # only one compartment when two available. This version2 corrects the problem
+
+        compartments = self.metadata_df["short_comp"].unique().tolist()
+        for label in ["abundances_file_name", "meanE_or_fracContrib_file_name",
+                      "isotopologue_prop_file_name", "isotopologue_abs_file_name"]:
+            self.compartmentalized_dfs[label] = {}
+        for c in compartments:
+            file_paths = [
+                (
+                    "abundances_file_name",
+                    os.path.join(self.processed_data_folder, f"{self.config.abundances_file_name}--{c}.tsv"),
+                ),
+                (
+                    "meanE_or_fracContrib_file_name",
+                    os.path.join(self.processed_data_folder, f"{self.config.meanE_or_fracContrib_file_name}--{c}.tsv"),
+                ),
+                (
+                    "isotopologue_prop_file_name",
+                    os.path.join(self.processed_data_folder, f"{self.config.isotopologue_prop_file_name}--{c}.tsv"),
+                ),
+                (
+                    "isotopologue_abs_file_name",
+                    os.path.join(self.processed_data_folder, f"{self.config.isotopologue_abs_file_name}--{c}.tsv"),
+                ),
+            ]
+
+            for label, fp in file_paths:
+                if os.path.exists(fp):
+                    self.compartmentalized_dfs[label][c] = pd.read_csv(fp, sep="\t", header=0, index_col=0)
+                logger.info("Loaded compartmentalized %s DF for %s", label, c)
