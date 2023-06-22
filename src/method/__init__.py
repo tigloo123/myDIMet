@@ -112,7 +112,7 @@ class AbundancePlot(Method):
             logger.warning("No selected metabolites provided, plotting for all; might result in ugly too wide plots")
             with open_dict(cfg):
                 for c in set(dataset.metadata_df["short_comp"]):
-                    cfg.analysis["metabolites"] = {c: list(dataset.abundances_df["ID"])}
+                    cfg.analysis["metabolites"] = {c: dataset.abundances_df.index.to_list()}
 
         self.check_expectations(cfg, dataset)
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
@@ -235,7 +235,7 @@ class IsotopologueProportionsPlot(Method):
             with open_dict(cfg):
                 compartments = list(set(dataset.metadata_df["short_comp"]))
                 for c in compartments:
-                    isotopologues_names = list(dataset.isotopologues_proportions_df["ID"])
+                    isotopologues_names = list(dataset.isotopologues_proportions_df.index.to_list())
                     metabolites = set(
                         [i.split("_m+")[0] for i in isotopologues_names]
                         )
