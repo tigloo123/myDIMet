@@ -20,7 +20,3 @@ impute_values:
   mean_enrichment: "min"
   isotopologues: "min"
   isotopologue_proportions: "min"
-
-thresholds:
-  padj: 0.05
-  absolute_log2FC: 1
