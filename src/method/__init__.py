@@ -67,7 +67,6 @@ class MultiGroupComparisonConfig(MethodConfig):
     grouping: ListConfig = ["condition", "timepoint"]
     correction_method: str = "bonferroni"
     impute_values: DictConfig
-    thresholds: DictConfig
 
     def build(self) -> "MultiGroupComparison":
         return MultiGroupComparison(config=self)
@@ -158,9 +157,6 @@ class DifferentialAnalysis(Method):
     def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
         # check that necessary information is provided in the analysis config
         try:
-            float(cfg.analysis.method.thresholds["padj"]) is not None and \
-                float(cfg.analysis.method.thresholds["absolute_log2FC"]) is not None
-
             if not (all(len(c) == 2 for c in cfg.analysis.comparisons)):
                 raise ValueError(
                     f"Number of conditions has to be 2 for a pairwise comparison, see config file"

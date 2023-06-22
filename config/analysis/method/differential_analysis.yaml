@@ -21,7 +21,3 @@ statistical_test:
   mean_enrichment: KW
   isotopologues: KW
   isotopologue_proportions: KW
-
-thresholds:
-  padj: 0.05
-  absolute_log2FC: 1
