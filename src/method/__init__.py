@@ -88,7 +88,6 @@ class IsotopolPropStackedPlotConfig(MethodConfig):
     def build(self) -> "IsotopolPropStackedPlot":
         return IsotopolPropStackedPlot(config=self)
 
-      
 
 class Method(BaseModel):
     config: MethodConfig
@@ -103,6 +102,7 @@ class Method(BaseModel):
     def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
         logger.info("Not instantialted in the parent class.")
         raise NotImplementedError
+
 
 class AbundancePlot(Method):
     config: AbundancePlotConfig
