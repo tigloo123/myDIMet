@@ -11,7 +11,7 @@ from helpers import flatten
 from processing.differential_analysis import differential_comparison, multi_group_compairson
 from visualization.abundance_bars import run_plot_abundance_bars
 from constants import assert_literal, data_files_keys_type
-from visualization.isotopolog_prop_stacked import run_isotopol_prop_stacked
+from visualization.isotopologue_proportions import run_isotopologue_proportions_plot
 
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ class MultiGroupComparisonConfig(MethodConfig):
         return MultiGroupComparison(config=self)
 
       
-class IsotopolPropStackedPlotConfig(MethodConfig):
+class IsotopologueProportionsPlotConfig(MethodConfig):
     """
     Sets default values or fills them from the method yaml file
     """
@@ -84,8 +84,8 @@ class IsotopolPropStackedPlotConfig(MethodConfig):
     x_ticks_text_size: int = 18
     y_ticks_text_size: int = 19
 
-    def build(self) -> "IsotopolPropStackedPlot":
-        return IsotopolPropStackedPlot(config=self)
+    def build(self) -> "IsotopologueProportionsPlot":
+        return IsotopologueProportionsPlot(config=self)
 
 
 class Method(BaseModel):
@@ -128,7 +128,7 @@ class AbundancePlot(Method):
                 )
             if not set(cfg.analysis.timepoints).issubset(set(dataset.metadata_df["timepoint"])):
                 raise ValueError(
-                    f"[Analysis > Time sel] time points provided in the config file are not present in [Metadata > timepoint]"
+                    f"[Analysis > Timepoints] time points provided in the config file are not present in [Metadata > timepoint]"
                 )
         except ConfigAttributeError as e:
             logger.error(f"Mandatory parameter not provided in the config file:{e}, aborting")
@@ -221,29 +221,30 @@ class MultiGroupComparison(Method):
         except ValueError as e:
             logger.error(f"Data inconsistency:{e}")
 
-            
 
-class IsotopolPropStackedPlot(Method):
-    config: IsotopolPropStackedPlotConfig
+class IsotopologueProportionsPlot(Method):
+    config: IsotopologueProportionsPlotConfig
 
     def run(self, cfg: DictConfig, dataset: Dataset) -> None:
-        logger.info("i stacked: %s", self.config)
-        dataset.load_compartmentalized_data_version2()
+        logger.info("i stacked: %s", self.config)  # TODO : improve this message
+
         if not (
                 "metabolites" in cfg.analysis.keys()):  # plotting for _all_ metabolites
             logger.warning(
-                "No selected metabolites provided,  plotting for all")
+                "No selected metabolites provided, plotting for all may fail")
             with open_dict(cfg):
-                for c in set(dataset.metadata_df["short_comp"]):
-                    # yes abundance_df, isotopol hasn't pure metabolite name :
-                    cfg.analysis["metabolites"] = {c: list(dataset.abundance_df[
-                            "metabolite_or_isotopologue"])}
+                compartments = list(set(dataset.metadata_df["short_comp"]))
+                for c in compartments:
+                    isotopologues_names = list(dataset.isotopologues_proportions_df["ID"])
+                    metabolites = set(
+                        [i.split("_m+")[0] for i in isotopologues_names]
+                        )
+                    cfg.analysis["metabolites"] = {c: list(metabolites)}
 
         self.check_expectations(cfg, dataset)
-
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
         os.makedirs(out_plot_dir, exist_ok=True)
-        run_isotopol_prop_stacked(dataset, out_plot_dir, cfg)
+        run_isotopologue_proportions_plot(dataset, out_plot_dir, cfg)
 
     def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
         try:
@@ -254,7 +255,7 @@ class IsotopolPropStackedPlot(Method):
             if not set(cfg.analysis.timepoints).issubset(
                     set(dataset.metadata_df["timepoint"])):
                 raise ValueError(
-                    f"[Analysis > Time sel] time points provided in the config file are not present in [Metadata > timepoint]"
+                    f"[Analysis > Timepoints] time points provided in the config file are not present in [Metadata > timepoint]"
                 )
             if not cfg.analysis.width_each_stack > float(0):
                 raise ValueError(

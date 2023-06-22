@@ -47,7 +47,7 @@ class Dataset(BaseModel):
     metadata_df: Optional[pd.DataFrame] = None
     abundances_df: Optional[pd.DataFrame] = None
     mean_enrichment_df: Optional[pd.DataFrame] = None
-    isotopologue_proportions: Optional[pd.DataFrame] = None
+    isotopologue_proportions_df: Optional[pd.DataFrame] = None
     isotopologues_df: Optional[pd.DataFrame] = None
     available_datasets: Set[
         Literal["metadata", "abundances", "mean_enrichment", "isotopologue_proportions", "isotopologues"]
@@ -91,7 +91,7 @@ class Dataset(BaseModel):
             self.metadata_df,
             self.abundances_df,
             self.mean_enrichment_df,
-            self.isotopologue_proportions,
+            self.isotopologue_proportions_df,
             self.isotopologues_df,
         ) = dfs
 
