@@ -61,7 +61,7 @@ def concatenate_dataframes(df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFra
     assert set(df3.columns).issubset(set(df1.columns))
     df2 = df2.reindex(columns=df1.columns, fill_value=np.nan)
     df3 = df3.reindex(columns=df1.columns, fill_value=np.nan)
-    result = pd.concat([df1, df2, df3], ignore_index=True)
+    result = pd.concat([df1, df2, df3], ignore_index=False)
     return result
 
 

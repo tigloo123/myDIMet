@@ -258,7 +258,7 @@ def complex_stacked_plot(
     [ax.invert_yaxis() for ax in axs]  # invert y, step 1
 
     for ax in axs:
-        ylabels = ax.get_yticks().to_list()
+        ylabels = list(ax.get_yticks())
         ax.yaxis.set_major_locator(mticker.FixedLocator(ylabels))
         ax.set_yticklabels([100 - int(i) for i in ylabels])  # invert y, step2
 
@@ -353,7 +353,7 @@ def run_isotopologue_proportions_plot(dataset: Dataset,
     time_levels_list: List[str] = [
         str(i) for i in sorted(metadata_df['timenum'].unique())]
 
-    compartments = metadata_df['short_comp'].unique().to_list()
+    compartments = list(metadata_df['short_comp'].unique())
 
     for co in compartments:
         metadata_compartment_df: pd.DataFrame = \
