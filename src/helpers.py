@@ -442,7 +442,7 @@ def absolute_geommean_diff(b_values: np.array, a_values: np.array):
 
 def drop_all_nan_metabolites_on_comp_frames(frames_dict: Dict, metadata: pd.DataFrame) -> Dict:
     """ metabolites must be in rows """
-    compartments = metadata["short_comp"].unique().to_list()
+    compartments = metadata["short_comp"].unique().tolist()
     for dataset in frames_dict.keys():
         for compartment in compartments:
             tmp = frames_dict[dataset][compartment]

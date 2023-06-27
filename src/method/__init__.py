@@ -226,7 +226,7 @@ class IsotopologueProportionsPlot(Method):
     config: IsotopologueProportionsPlotConfig
 
     def run(self, cfg: DictConfig, dataset: Dataset) -> None:
-        logger.info("i stacked: %s", self.config)  # TODO : improve this message
+        logger.info("Will perform isotopologue proportions stacked-bar plots, with the following config: %s", self.config)  
 
         if not (
                 "metabolites" in cfg.analysis.keys()):  # plotting for _all_ metabolites
