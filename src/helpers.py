@@ -13,11 +13,12 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 import locale
-import re
+import logging
 from functools import reduce
 
 from constants import assert_literal, overlap_methods_types
 
+logger = logging.getLogger(__name__)
 
 # TODO: there is no version1, change name?
 def compute_padj_version2(df: pd.DataFrame, correction_alpha: float, correction_method: str) -> pd.DataFrame:
@@ -75,8 +76,8 @@ def split_rows_by_threshold(df: pd.DataFrame, column_name: str, threshold: float
         undesired_rows = set(df.index) - set(good_df.index)
         bad_df = df.loc[list(undesired_rows)]
     except Exception as e:
-        print(e)
-        print("Error in split_rows_by_threshold", " check qualityDistanceOverSpan parameter in the analysis YAML file")
+        logger.info(e)
+        logger.info("Error in split_rows_by_threshold", " check qualityDistanceOverSpan parameter in the analysis YAML file")
 
     return good_df, bad_df
 
@@ -146,34 +147,34 @@ def first_column_for_column_values(df: pd.DataFrame, columns: List, values: List
     return first_column_values_list
 
 
-def zero_repl_arg(zero_repl_arg: str) -> None:  # TODO: this has to be cleaned up
+def zero_repl_arg(how: str) -> Dict:  # TODO: this has to be cleaned up
     """
     zero_repl_arg is a string representing the argument for replacing zero values (e.g. "min/2").
     The result is a dictionary of replacement arguments.
     """
-    zero_repl_arg = zero_repl_arg.lower()
+    how = how.lower()
     err_msg = "replace_zero_with argument is not correctly formatted"
-    if zero_repl_arg.startswith("min"):
-        if zero_repl_arg == "min":
+    if how.startswith("min"):
+        if how == "min":
             n = int(1)  # n is the denominator, default is 1
         else:
             try:
-                n = float(str(zero_repl_arg.split("/")[1]))
+                n = float(str(how.split("/")[1]))
             except Exception as e:
-                print(e)
+                logger.info(e)
                 raise ValueError(err_msg)
 
-        def foo(x, n):
+        def foo(x, n):  # TODO: needs cleanup
             return min(x) / n
 
     else:
         try:
-            n = float(str(zero_repl_arg))
+            n = float(str(how))
         except Exception as e:
-            print(e)
+            logger.info(e)
             raise ValueError(err_msg)
 
-        def foo(x, n):
+        def foo(x, n):  # TODO: cleanup
             return n
 
     return {"repZero": foo, "n": n}
@@ -192,7 +193,7 @@ def arg_repl_zero2value(argum_zero_rep: str, df: pd.DataFrame) -> float:
     return replacement
 
 
-def overlap_symmetric(x: np.array, y: np.array) -> int:
+def overlap_symmetric(x: np.array, y: np.array) -> float:
     a = [np.nanmin(x), np.nanmax(x)]
     b = [np.nanmin(y), np.nanmax(y)]
 
@@ -203,13 +204,13 @@ def overlap_symmetric(x: np.array, y: np.array) -> int:
     return overlap
 
 
-def overlap_asymmetric(x: np.array, y: np.array) -> int:
+def overlap_asymmetric(x: np.array, y: np.array) -> float:
     # x is the reference group
     overlap = np.nanmin(y) - np.nanmax(x)
     return overlap
 
 
-def compute_distance_between_intervals(group1: np.array, group2: np.array, overlap_method: str) -> pd.DataFrame:
+def compute_distance_between_intervals(group1: np.array, group2: np.array, overlap_method: str) -> float:
     """
     computes the distance between intervals provided in group1 and group2
     """
@@ -433,7 +434,7 @@ def compute_brunnermunzel_allH0(vInterest: np.array, vBaseline: np.array):
     return stat_result, pval_result
 
 
-def absolute_geommean_diff(b_values: np.array, a_values: np.array):
+def absolute_geommean_diff(b_values: np.array, a_values: np.array) -> float:
     m_b = compute_gmean_nonan(b_values)
     m_a = compute_gmean_nonan(a_values)
     diff_absolute = abs(m_b - m_a)
@@ -447,7 +448,6 @@ def drop_all_nan_metabolites_on_comp_frames(frames_dict: Dict, metadata: pd.Data
         for compartment in compartments:
             tmp = frames_dict[dataset][compartment]
             tmp.dropna(how="all", subset=tmp.columns.difference(["ID"]), axis=0)
-            #tmp = tmp.dropna(how="all", axis=0)
             frames_dict[dataset][compartment] = tmp
     return frames_dict
 
