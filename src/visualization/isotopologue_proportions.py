@@ -15,13 +15,14 @@ from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig
 from data import Dataset
 from helpers import dynamic_xposition_ylabeltext
+from typing import Dict
 
 logger = logging.getLogger(__name__)
 
 cs = ConfigStore.instance()
 
 
-def isotopol_prop_2piled_df(compartment_df, metada_co):
+def isotopologue_proportions_2piled_df(compartment_df: pd.DataFrame, metada_df: pd.DataFrame) -> pd.DataFrame:
     """
     melt the compartment_df, several steps required:
     - transpose compratment_df
@@ -31,20 +32,20 @@ def isotopol_prop_2piled_df(compartment_df, metada_co):
         for plotting)
     - set
     example output:
-        timenum    condition    isotop_full_name    Isotopologue Contribution (%)
+        timenum    condition    isotopologue_name    Isotopologue Contribution (%)
         0           control      L-Phenylalanine     0.01
     """
     combined_isos_metadata_df = compartment_df.T
 
     combined_isos_metadata_df['name_to_plot'] = combined_isos_metadata_df.index
     combined_isos_metadata_df = pd.merge(
-        combined_isos_metadata_df, metada_co, on='name_to_plot')
+        combined_isos_metadata_df, metada_df, on='name_to_plot')
 
     combined_isos_metadata_df = combined_isos_metadata_df.drop(
         columns=['short_comp', 'original_name', 'name_to_plot', 'timepoint'])
     piled_df = pd.melt(combined_isos_metadata_df,
                        id_vars=['timenum', 'condition'],
-                       var_name="isotop_full_name",
+                       var_name="isotopologue_name",
                        value_name="Isotopologue Contribution (%)")
 
     piled_df['timenum'] = piled_df['timenum'].astype(str)
@@ -58,7 +59,7 @@ def massage_isotopologues(piled_df) -> pd.DataFrame:
     returns dataframe splitting metabolite and m+x into two separate columns
     and also correcting weird values
     """
-    tmp_df = piled_df['isotop_full_name'].str.split("_m+",
+    tmp_df = piled_df['isotopologue_name'].str.split("_m+",
                                                     expand=True, regex=False)
     tmp_df.rename(columns={0: 'name', 1: 'm+x'}, inplace=True)
     piled_df["metabolite"] = tmp_df["name"]
@@ -79,12 +80,12 @@ def massage_isotopologues(piled_df) -> pd.DataFrame:
     return piled_df
 
 
-def preparemeansreplicates(piled_df, metaboli_selected) -> dict:
+def prepare_means_replicates(piled_df, metaboli_selected) -> Dict:
     """
     returns a dictionary of dataframes, keys are metabolites
     """
     dfcopy = piled_df.copy()
-    # instead groupby isotop_full_name, using m+x and metabolite works better
+    # instead groupby isotopologue_name, using m+x and metabolite works better
     dfcopy = dfcopy.groupby(
         ["condition", "metabolite", "m+x", "timenum"])\
         .mean("Isotopologue Contribution %")  # df.mean skips nan by default
@@ -101,7 +102,7 @@ def preparemeansreplicates(piled_df, metaboli_selected) -> dict:
     return dfs_dict
 
 
-def addcombinedconditime(dfs_dict: dict, combined_tc_levels: List[str]) -> dict:
+def add_combined_conditime(dfs_dict: Dict, combined_tc_levels: List[str]) -> Dict:
     """
     add column 'time_and_condition' to each  metabolite dataframe in Dictio
     """
@@ -115,7 +116,7 @@ def addcombinedconditime(dfs_dict: dict, combined_tc_levels: List[str]) -> dict:
     return dfs_dict
 
 
-def addcategoricaltime(dfs_dict, levelstime_str) -> dict:
+def add_categorical_time(dfs_dict, levelstime_str) -> Dict:
     """
     existing column 'timenum' as categorical, with specific order.
     Each metabolite dataframe in Dictio is processed.
@@ -127,7 +128,7 @@ def addcategoricaltime(dfs_dict, levelstime_str) -> dict:
     return dfs_dict
 
 
-def give_colors_carbons(nb_of_carbons):
+def give_colors_carbons(nb_of_carbons: int) -> Dict:
     """
     currently 30 carbons (30 colors) supported
     """
@@ -158,7 +159,7 @@ def give_colors_carbons(nb_of_carbons):
 
 
 def complex_stacked_plot(
-        metaboli_selected: List[str], dfs_dict: dict,
+        metaboli_selected: List[str], dfs_dict: Dict,
         outfilename: str, cfg: DictConfig,
         figu_width: float, xlab_text: bool,
         wspace_stacks: float, numbers_size: int,
@@ -170,8 +171,8 @@ def complex_stacked_plot(
     """
     palsautoD = give_colors_carbons(cfg.analysis.method.max_nb_carbons_possible)
 
-    sns.set_style({"font.family": "sans-serif",
-                   "font.sans-serif": "Liberation Sans"})
+    #sns.set_style({"font.family": "sans-serif",
+    #               "font.sans-serif": "Liberation Sans"})
     f, axs = plt.subplots(1, len(metaboli_selected), sharey=cfg.analysis.method.sharey,
                           figsize=(figu_width, cfg.analysis.method.plots_height))
     plt.rcParams.update({"font.size": 20})
@@ -312,7 +313,7 @@ def time_plus_condi_labs(conditions, time_levels_list):
     return combined_tc_levels
 
 
-def givelabelstopalsD(palsautoD):
+def give_labels_to_palsD(palsautoD) -> Dict:
     tmp = dict()
     for k in palsautoD.keys():
         tmp["m+"+str(k)] = palsautoD[k]
@@ -322,7 +323,7 @@ def givelabelstopalsD(palsautoD):
 def create_legend(cfg, out_plot_dir) -> None:
     plt.figure(figsize=(4, cfg.analysis.method.max_nb_carbons_possible * 0.6))
     palsautoD = give_colors_carbons(cfg.analysis.method.max_nb_carbons_possible)
-    palsautoD_labeled = givelabelstopalsD(palsautoD)
+    palsautoD_labeled = give_labels_to_palsD(palsautoD)
     myhandless = []
     for c in palsautoD_labeled.keys():
         paobj = mpatches.Patch(facecolor=palsautoD_labeled[c],
@@ -341,9 +342,7 @@ def run_isotopologue_proportions_plot(dataset: Dataset,
                                       out_plot_dir, cfg: DictConfig) -> None:
     metadata_df = dataset.metadata_df
     timepoints = cfg.analysis.timepoints
-    metabolites = (
-        cfg.analysis.metabolites
-    )  # will define which metabolites are plotted
+    metabolites = cfg.analysis.metabolites # will define which metabolites are plotted
     conditions = cfg.analysis.dataset.conditions
 
     width_each_stack = cfg.analysis.width_each_stack
@@ -355,43 +354,43 @@ def run_isotopologue_proportions_plot(dataset: Dataset,
 
     compartments = list(metadata_df['short_comp'].unique())
 
-    for co in compartments:
+    for compartment in compartments:
         metadata_compartment_df: pd.DataFrame = \
-            metadata_df.loc[metadata_df["short_comp"] == co, :]
-        compartment_df = dataset.compartmentalized_dfs["isotopologue_proportions"][co]
+            metadata_df.loc[metadata_df["short_comp"] == compartment, :]
+        compartment_df = dataset.compartmentalized_dfs["isotopologue_proportions"][compartment]
 
         # metadata, isotopologues and time of interest
         time_metadata_df = metadata_compartment_df.loc[
                      metadata_compartment_df["timepoint"].isin(timepoints), :]
         time_compartment_df = compartment_df[time_metadata_df["name_to_plot"]]
-        # note that pandas automatically transform any 99.9% in decimal 0.999
-        piled_df = isotopol_prop_2piled_df(time_compartment_df, 
-                                           time_metadata_df)
+        # note that pandas automatically transforms any 99.9% in decimal 0.999
+        piled_df = isotopologue_proportions_2piled_df(time_compartment_df,
+                                                      time_metadata_df)
         # values now are in %
         piled_df = massage_isotopologues(piled_df)
-        metaboli_selected = metabolites[co]
-        dfs_dict = preparemeansreplicates(piled_df, metaboli_selected)
+        compartment_metabolites = metabolites[compartment]
+        dfs_dict = prepare_means_replicates(piled_df, compartment_metabolites)
 
         # figure width: adapt to nb of metabolites
-        figu_width = width_each_stack * len(metaboli_selected)
+        figure_width = width_each_stack * len(compartment_metabolites) # TODO : this is fragile
 
-        if cfg.analysis.method.separated_plots_by_condition:
+        if cfg.analysis.method.split_plots_by_condition:
             for condition in conditions:
                 output_path = os.path.join(
-                    out_plot_dir, f"isotopologues_stack_{condition}--{co}.pdf"
+                    out_plot_dir, f"isotopologues_stack_{condition}--{compartment}.pdf"
                 )
                 cond_time_metadata = time_metadata_df.loc[
                     time_metadata_df['condition'] == condition, :]
                 condition_df = time_compartment_df[
                     cond_time_metadata['name_to_plot']]
-                piled_df = isotopol_prop_2piled_df(condition_df,
-                                                   cond_time_metadata)
+                piled_df = isotopologue_proportions_2piled_df(condition_df,
+                                                              cond_time_metadata)
                 piled_df = massage_isotopologues(piled_df)
-                dfs_dict = preparemeansreplicates(piled_df, metaboli_selected)
-                dfs_dict = addcategoricaltime(dfs_dict, time_levels_list)
+                dfs_dict = prepare_means_replicates(piled_df, compartment_metabolites)
+                dfs_dict = add_categorical_time(dfs_dict, time_levels_list)
                 complex_stacked_plot(
-                    metaboli_selected, dfs_dict, output_path, cfg,
-                    figu_width, xlab_text=True, wspace_stacks=wspace_stacks,
+                    compartment_metabolites, dfs_dict, output_path, cfg,
+                    figure_width, xlab_text=True, wspace_stacks=wspace_stacks,
                     numbers_size=numbers_size, x_to_plot="timenum",
                     x_ticks_text_tilt=x_ticks_text_tilt_fixed
                 )
@@ -405,14 +404,14 @@ def run_isotopologue_proportions_plot(dataset: Dataset,
                                                           time_levels_list)
             # end if
 
-            dfs_dict = addcombinedconditime(dfs_dict, combined_tc_levels)
+            dfs_dict = add_combined_conditime(dfs_dict, combined_tc_levels)
 
             output_path = os.path.join(
-                out_plot_dir, f"isotopologues_stack--{co}.pdf"
+                out_plot_dir, f"isotopologues_stack--{compartment}.pdf"
             )
             complex_stacked_plot(
-                metaboli_selected, dfs_dict, output_path, cfg,
-                figu_width,
+                compartment_metabolites, dfs_dict, output_path, cfg,
+                figure_width,
                 xlab_text=True,
                 wspace_stacks=wspace_stacks,
                 numbers_size=numbers_size, x_to_plot="time_and_condition",
@@ -420,17 +419,17 @@ def run_isotopologue_proportions_plot(dataset: Dataset,
             )
 
             # drop x text: facilitate manual changes in graph external tool
-            output_path_NoXlab = os.path.join(
-                out_plot_dir, f"isotopologues_stack--{co}_noxlab.pdf"
-            )
-            complex_stacked_plot(
-                metaboli_selected, dfs_dict,  output_path_NoXlab, cfg,
-                figu_width,
-                xlab_text=False,
-                wspace_stacks=wspace_stacks,
-                numbers_size=numbers_size, x_to_plot="time_and_condition",
-                x_ticks_text_tilt=x_ticks_text_tilt_fixed
-            )
+            # output_path_NoXlab = os.path.join(
+            #     out_plot_dir, f"isotopologues_stack--{compartment}_noxlab.svg"
+            # )
+            # complex_stacked_plot(
+            #     compartment_metabolites, dfs_dict,  output_path_NoXlab, cfg,
+            #     figure_width,
+            #     xlab_text=False,
+            #     wspace_stacks=wspace_stacks,
+            #     numbers_size=numbers_size, x_to_plot="time_and_condition",
+            #     x_ticks_text_tilt=x_ticks_text_tilt_fixed
+            # )
         # end if
 
         create_legend(cfg, out_plot_dir)  # legend alone

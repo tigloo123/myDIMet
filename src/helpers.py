@@ -76,8 +76,8 @@ def split_rows_by_threshold(df: pd.DataFrame, column_name: str, threshold: float
         undesired_rows = set(df.index) - set(good_df.index)
         bad_df = df.loc[list(undesired_rows)]
     except Exception as e:
-        print(e)
-        print("Error in split_rows_by_threshold", " check qualityDistanceOverSpan parameter in the analysis YAML file")
+        logger.info(e)
+        logger.info("Error in split_rows_by_threshold", " check qualityDistanceOverSpan parameter in the analysis YAML file")
 
     return good_df, bad_df
 
@@ -147,7 +147,7 @@ def first_column_for_column_values(df: pd.DataFrame, columns: List, values: List
     return first_column_values_list
 
 
-def zero_repl_arg(zero_repl_arg: str) -> None:  # TODO: this has to be cleaned up
+def zero_repl_arg(how: str) -> Dict:  # TODO: this has to be cleaned up
     """
     zero_repl_arg is a string representing the argument for replacing zero values (e.g. "min/2").
     The result is a dictionary of replacement arguments.
