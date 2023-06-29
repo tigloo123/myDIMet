@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 cs = ConfigStore.instance()
 
 def pile_up_abundance(df: pd.DataFrame, metada_sel: pd.DataFrame) -> pd.DataFrame:
-    dfcompartment = df.set_index("ID").T.reset_index()
+    dfcompartment = df.T.reset_index()
     dafull = pd.DataFrame(columns=["timepoint", "condition", "metabolite", "abundance"])
 
     for metabolite in dfcompartment.columns[1:]:
@@ -144,7 +144,7 @@ def run_plot_abundance_bars(dataset: Dataset, out_plot_dir, cfg: DictConfig) -> 
         compartment_df = dataset.compartmentalized_dfs["abundances"][compartment]
         # metadata and abundances time of interest
         metadata_slice = metadata_compartment_df.loc[metadata_compartment_df["timepoint"].isin(timepoints), :]
-        values_slice = compartment_df[["ID"] + list(metadata_slice["name_to_plot"])]
+        values_slice = compartment_df[list(metadata_slice["name_to_plot"])]
 
         # total piled-up data:
         piled_sel = pile_up_abundance(values_slice, metadata_slice)

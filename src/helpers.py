@@ -61,7 +61,7 @@ def concatenate_dataframes(df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFra
     assert set(df3.columns).issubset(set(df1.columns))
     df2 = df2.reindex(columns=df1.columns, fill_value=np.nan)
     df3 = df3.reindex(columns=df1.columns, fill_value=np.nan)
-    result = pd.concat([df1, df2, df3], ignore_index=True)
+    result = pd.concat([df1, df2, df3], ignore_index=False)
     return result
 
 
@@ -228,7 +228,7 @@ def df_to_dict_by_compartment(df: pd.DataFrame, metadata: pd.DataFrame) -> dict:
     output_dict = dict()
     for compartment in metadata["short_comp"].unique():
         sample_names = metadata[metadata["short_comp"] == compartment]["original_name"]
-        compartment_df = df[["ID"]+list(sample_names)]
+        compartment_df = df[list(sample_names)]
         output_dict[compartment] = compartment_df
     return output_dict
 
@@ -258,7 +258,7 @@ def verify_metadata_sample_not_duplicated(metadata_df: pd.DataFrame) -> None:
     error if any conflicts are detected.
     '''
     sample_counts = metadata_df["name_to_plot"].value_counts()
-    duplicated_samples = sample_counts[sample_counts > 1].index.tolist()
+    duplicated_samples = sample_counts[sample_counts > 1].index.to_list()
 
     if duplicated_samples:
         txt_errors = f"-> duplicated sample names: {duplicated_samples}\n"
@@ -446,23 +446,22 @@ def drop_all_nan_metabolites_on_comp_frames(frames_dict: Dict, metadata: pd.Data
     for dataset in frames_dict.keys():
         for compartment in compartments:
             tmp = frames_dict[dataset][compartment]
-            tmp.dropna(how="all", subset=tmp.columns.difference(["ID"]), axis=0)
-            #tmp = tmp.dropna(how="all", axis=0)
+            tmp = tmp.dropna(how="all", axis=0)
             frames_dict[dataset][compartment] = tmp
     return frames_dict
+
 
 def set_samples_names(frames_dict: Dict, metadata: pd.DataFrame) -> Dict:
     '''
     Given a dictionary where each dataset has been split in compartment dataframes,
     goes through them and renames all the columns (sample names) to those that we
-    want to see on the plot; excludes the ID column from this
+    want to see on the plot and tables
     '''
     for dataset, compartments_dict in frames_dict.items():
         for compartment, df in compartments_dict.items():
             original_names = metadata[metadata["short_comp"] == compartment]["original_name"]
             new_names = metadata[metadata["short_comp"] == compartment]["name_to_plot"]
-            renamed_columns = {old: new for old, new in zip(original_names, new_names)
-                               if old != "ID"}
+            renamed_columns = {old: new for old, new in zip(original_names, new_names)}
             renamed_df = df.rename(columns=renamed_columns)
             frames_dict[dataset][compartment] = renamed_df
 

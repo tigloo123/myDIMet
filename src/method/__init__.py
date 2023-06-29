@@ -11,6 +11,8 @@ from helpers import flatten
 from processing.differential_analysis import differential_comparison, multi_group_compairson
 from visualization.abundance_bars import run_plot_abundance_bars
 from constants import assert_literal, data_files_keys_type
+from visualization.isotopologue_proportions import run_isotopologue_proportions_plot
+
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +71,23 @@ class MultiGroupComparisonConfig(MethodConfig):
     def build(self) -> "MultiGroupComparison":
         return MultiGroupComparison(config=self)
 
+      
+class IsotopologueProportionsPlotConfig(MethodConfig):
+    """
+    Sets default values or fills them from the method yaml file
+    """
+    max_nb_carbons_possible: int = 24
+    appearance_separated_time: bool = True
+    separated_plots_by_condition: bool = False
+    plots_height: float = 4.8
+    sharey: bool =  False  # share y axis across subplots
+    x_ticks_text_size: int = 18
+    y_ticks_text_size: int = 19
+
+    def build(self) -> "IsotopologueProportionsPlot":
+        return IsotopologueProportionsPlot(config=self)
+
+
 class Method(BaseModel):
     config: MethodConfig
 
@@ -83,6 +102,7 @@ class Method(BaseModel):
         logger.info("Not instantialted in the parent class.")
         raise NotImplementedError
 
+
 class AbundancePlot(Method):
     config: AbundancePlotConfig
 
@@ -92,7 +112,7 @@ class AbundancePlot(Method):
             logger.warning("No selected metabolites provided, plotting for all; might result in ugly too wide plots")
             with open_dict(cfg):
                 for c in set(dataset.metadata_df["short_comp"]):
-                    cfg.analysis["metabolites"] = {c: list(dataset.abundances_df["ID"])}
+                    cfg.analysis["metabolites"] = {c: dataset.abundances_df.index.to_list()}
 
         self.check_expectations(cfg, dataset)
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
@@ -108,7 +128,7 @@ class AbundancePlot(Method):
                 )
             if not set(cfg.analysis.timepoints).issubset(set(dataset.metadata_df["timepoint"])):
                 raise ValueError(
-                    f"[Analysis > Time sel] time points provided in the config file are not present in [Metadata > timepoint]"
+                    f"[Analysis > Timepoints] time points provided in the config file are not present in [Metadata > timepoint]"
                 )
         except ConfigAttributeError as e:
             logger.error(f"Mandatory parameter not provided in the config file:{e}, aborting")
@@ -168,6 +188,7 @@ class DifferentialAnalysis(Method):
             logger.error(f"Data inconsistency:{e}")
             sys.exit(1)
 
+            
 class MultiGroupComparison(Method):
     config: MultiGroupComparisonConfig
 
@@ -199,4 +220,59 @@ class MultiGroupComparison(Method):
 
         except ValueError as e:
             logger.error(f"Data inconsistency:{e}")
+
+
+class IsotopologueProportionsPlot(Method):
+    config: IsotopologueProportionsPlotConfig
+
+    def run(self, cfg: DictConfig, dataset: Dataset) -> None:
+        logger.info("Will perform isotopologue proportions stacked-bar plots, with the following config: %s", self.config)  
+
+        if not (
+                "metabolites" in cfg.analysis.keys()):  # plotting for _all_ metabolites
+            logger.warning(
+                "No selected metabolites provided, plotting for all may fail")
+            with open_dict(cfg):
+                compartments = list(set(dataset.metadata_df["short_comp"]))
+                for c in compartments:
+                    isotopologues_names = list(dataset.isotopologues_proportions_df.index.to_list())
+                    metabolites = set(
+                        [i.split("_m+")[0] for i in isotopologues_names]
+                        )
+                    cfg.analysis["metabolites"] = {c: list(metabolites)}
+
+        self.check_expectations(cfg, dataset)
+        out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
+        os.makedirs(out_plot_dir, exist_ok=True)
+        run_isotopologue_proportions_plot(dataset, out_plot_dir, cfg)
+
+    def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
+        try:
+            if not set(cfg.analysis.metabolites.keys()).issubset(dataset.metadata_df['short_comp']):
+                raise ValueError(
+                    f"[Analysis > Metabolites > compartments] are missing from [Metadata > Compartments]"
+                )
+            if not set(cfg.analysis.timepoints).issubset(
+                    set(dataset.metadata_df["timepoint"])):
+                raise ValueError(
+                    f"[Analysis > Timepoints] time points provided in the config file are not present in [Metadata > timepoint]"
+                )
+            if not cfg.analysis.width_each_stack > float(0):
+                raise ValueError(
+                    f"[Analysis > width_each_stack] must be superior to 0"
+                )
+            if not cfg.analysis.wspace_stacks > float(0):
+                raise ValueError(
+                    f"[Analysis > wspace_stacks] must be superior to 0"
+                )
+            if not cfg.analysis.inner_numbers_size >= 0:
+                raise ValueError(
+                    f"[Analysis > wspace_stacks] must be greater or equal to 0"
+                )
+        except ConfigAttributeError as e:
+            logger.error(
+                f"Mandatory parameter not provided in the config file:{e}, aborting")
+            sys.exit(1)
+        except ValueError as e:
+            logger.error(f"Data inconsistency: {e}")
             sys.exit(1)
