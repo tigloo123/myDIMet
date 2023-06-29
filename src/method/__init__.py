@@ -12,6 +12,7 @@ from processing.differential_analysis import differential_comparison, multi_grou
 from visualization.abundance_bars import run_plot_abundance_bars
 from constants import assert_literal, data_files_keys_type
 from visualization.isotopologue_proportions import run_isotopologue_proportions_plot
+from visualization.mean_enrichment_line_plot import run_mean_enrichment_line_plot
 
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,21 @@ class IsotopologueProportionsPlotConfig(MethodConfig):
 
     def build(self) -> "IsotopologueProportionsPlot":
         return IsotopologueProportionsPlot(config=self)
+
+
+class MeanEnrichmentLinePlotConfig(MethodConfig):
+    """
+    Sets default values or fills them from the method yaml file
+    """
+    alpha: float = 1
+    xaxis_title: str = "Time"
+    color_lines_by: str = "condition"  # or  "metabolite"
+    palette_condition: str = "paired"  # seaborn/matplotlib pals
+    palette_metabolite: str = "auto_multi_color"  # or .csv path
+
+    def build(self) -> "MeanEnrichmentLinePlot":
+        return MeanEnrichmentLinePlot(config=self)
+
 
 
 class Method(BaseModel):
@@ -276,3 +292,44 @@ class IsotopologueProportionsPlot(Method):
         except ValueError as e:
             logger.error(f"Data inconsistency: {e}")
             sys.exit(1)
+
+
+class MeanEnrichmentLinePlot(Method):
+    config: MeanEnrichmentLinePlotConfig
+
+    def run(self, cfg: DictConfig, dataset: Dataset) -> None:
+        logger.info("Will perform Mean Enrichment (syn. Fractional Contributions) line-plot with the following config: %s", self.config)
+        if not("metabolites" in cfg.analysis.keys()):
+            logger.warning(
+                "No selected metabolites provided, plotting for all; might result in ugly too wide plots")
+            with open_dict(cfg):
+                cfg.analysis["metabolites"] = {}
+                for c in set(dataset.metadata_df["short_comp"]):
+                    cfg.analysis["metabolites"][c] = \
+                          dataset.mean_enrichment_df.index.to_list()
+
+        self.check_expectations(cfg, dataset)
+        out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
+        os.makedirs(out_plot_dir, exist_ok=True)
+        run_mean_enrichment_line_plot(dataset, out_plot_dir, cfg)
+
+    def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
+        try:
+            if not set(cfg.analysis.metabolites.keys()).issubset(
+                    dataset.metadata_df['short_comp']):
+                raise ValueError(
+                    f"[Analysis > Metabolites > compartments] are missing from [Metadata > Compartments]"
+                )
+            if not cfg.analysis.method.color_lines_by in ["metabolite", "condition"]:
+                raise ValueError(
+                    f"[config > analysis > method > color_lines_by] must be metabolite or condition"
+                )
+        except ConfigAttributeError as e:
+            logger.error(
+                f"Mandatory parameter not provided in he config file: {e}, aborting"
+            )
+            sys.exit(1)
+        except ValueError as e:
+            logger.error(f"Data inconsistency: {e}")
+            sys.exit(1)
+
