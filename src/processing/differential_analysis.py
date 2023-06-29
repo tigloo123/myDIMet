@@ -357,7 +357,7 @@ def differential_comparison(
 
     impute_value = cfg.analysis.method.impute_values[file_name]
     for compartment, compartmentalized_df in dataset.compartmentalized_dfs[file_name].items():
-        df = compartmentalized_df.drop("ID", axis=1)
+        df = compartmentalized_df
         val_instead_zero = helpers.arg_repl_zero2value(impute_value, df)
         df = df.replace(to_replace=0, value=val_instead_zero)
 
@@ -388,7 +388,7 @@ def multi_group_compairson(
 
     impute_value = cfg.analysis.method.impute_values[file_name]
     for compartment, compartmentalized_df in dataset.compartmentalized_dfs[file_name].items():
-        df = compartmentalized_df.drop("ID", axis=1)
+        df = compartmentalized_df
         val_instead_zero = helpers.arg_repl_zero2value(impute_value, df)
         df = df.replace(to_replace=0, value=val_instead_zero)
 

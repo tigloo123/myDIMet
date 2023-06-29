@@ -78,7 +78,13 @@ class Dataset(BaseModel):
         dfs = []
         for label, file_path in file_paths:
             try:
-                dfs.append(pd.read_csv(file_path, sep="\t", header=0))
+                if label != "metadata":
+                    # the quantifications dfs take first column as index
+                    # (metabolites), regardless the name of that column
+                    dfs.append(pd.read_csv(file_path, sep="\t",
+                                           header=0, index_col=0))
+                else:
+                    dfs.append(pd.read_csv(file_path, sep="\t", header=0))
                 self.available_datasets.add(label)
             except FileNotFoundError:
                 logger.critical("File %s not found, continuing, but this might fail miserably", file_path)
@@ -135,6 +141,7 @@ class Dataset(BaseModel):
                 df.to_csv(os.path.join(out_data_path, output_file_name), sep="\t", header=True, index=False)
                 logger.info(f"Saved the {compartment} compartment version of {file_name} in {out_data_path}")
 
+
     def get_file_for_label(self, label):
         if label == "abundances":
             return self.config.abundances
@@ -146,3 +153,5 @@ class Dataset(BaseModel):
             return self.config.isotopologues
         else:
             raise ValueError(f"Unknown label {label}")
+
+   

@@ -76,8 +76,8 @@ def split_rows_by_threshold(df: pd.DataFrame, column_name: str, threshold: float
         undesired_rows = set(df.index) - set(good_df.index)
         bad_df = df.loc[list(undesired_rows)]
     except Exception as e:
-        logger.info(e)
-        logger.info("Error in split_rows_by_threshold", " check qualityDistanceOverSpan parameter in the analysis YAML file")
+        print(e)
+        print("Error in split_rows_by_threshold", " check qualityDistanceOverSpan parameter in the analysis YAML file")
 
     return good_df, bad_df
 
@@ -147,7 +147,7 @@ def first_column_for_column_values(df: pd.DataFrame, columns: List, values: List
     return first_column_values_list
 
 
-def zero_repl_arg(how: str) -> Dict:  # TODO: this has to be cleaned up
+def zero_repl_arg(zero_repl_arg: str) -> None:  # TODO: this has to be cleaned up
     """
     zero_repl_arg is a string representing the argument for replacing zero values (e.g. "min/2").
     The result is a dictionary of replacement arguments.
@@ -229,7 +229,7 @@ def df_to_dict_by_compartment(df: pd.DataFrame, metadata: pd.DataFrame) -> dict:
     output_dict = dict()
     for compartment in metadata["short_comp"].unique():
         sample_names = metadata[metadata["short_comp"] == compartment]["original_name"]
-        compartment_df = df[["ID"]+list(sample_names)]
+        compartment_df = df[list(sample_names)]
         output_dict[compartment] = compartment_df
     return output_dict
 
@@ -434,7 +434,7 @@ def compute_brunnermunzel_allH0(vInterest: np.array, vBaseline: np.array):
     return stat_result, pval_result
 
 
-def absolute_geommean_diff(b_values: np.array, a_values: np.array) -> float:
+def absolute_geommean_diff(b_values: np.array, a_values: np.array):
     m_b = compute_gmean_nonan(b_values)
     m_a = compute_gmean_nonan(a_values)
     diff_absolute = abs(m_b - m_a)
@@ -448,6 +448,7 @@ def drop_all_nan_metabolites_on_comp_frames(frames_dict: Dict, metadata: pd.Data
         for compartment in compartments:
             tmp = frames_dict[dataset][compartment]
             tmp.dropna(how="all", subset=tmp.columns.difference(["ID"]), axis=0)
+            #tmp = tmp.dropna(how="all", axis=0)
             frames_dict[dataset][compartment] = tmp
     return frames_dict
 
