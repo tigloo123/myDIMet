@@ -347,7 +347,10 @@ class PcaAnalysis(Method):
         out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
         os.makedirs(out_table_dir, exist_ok=True)
         self.check_expectations(cfg, dataset)
-        for file_name in ['abundances', 'mean_enrichment']:
+        available_pca_suitable_datatypes = set(
+            ['abundances', 'mean_enrichment']
+        ).intersection(dataset.available_datasets)
+        for file_name in available_pca_suitable_datatypes:
             logger.info(
                 f"Running pca of {dataset.get_file_for_label(file_name)}")
             pca_analysis(file_name, dataset, cfg,

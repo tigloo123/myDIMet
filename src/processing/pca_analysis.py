@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-from typing import List
+from typing import List, Tuple, Union
 import logging
 import numpy as np
 import pandas as pd
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def clean_reduce_datadf_4pca(df: pd.DataFrame,
-                             metadata_df: pd.DataFrame) ->pd.DataFrame :
+                             metadata_df: pd.DataFrame) -> pd.DataFrame:
     """
     Prepares quantitative dataframe for pca
     """
@@ -36,7 +36,7 @@ def clean_reduce_datadf_4pca(df: pd.DataFrame,
         return df_red
 
 
-def compute_pca(mymat, metadata_df) -> tuple[pd.DataFrame, pd.DataFrame]:
+def compute_pca(mymat, metadata_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Uses sklearn PCA.
     Returns the two computed metrics:
@@ -47,19 +47,15 @@ def compute_pca(mymat, metadata_df) -> tuple[pd.DataFrame, pd.DataFrame]:
                mymat.shape[0])  # min(nb_samples, nb_features)
 
     X = np.transpose(np.array(mymat))
-
     pca = PCA(n_components=dims)
-
     pc = pca.fit_transform(X)
-
     pc_df = pd.DataFrame(data=pc,
                          columns=['PC' + str(i) for i in range(1, dims + 1)])
     pc_df = pc_df.assign(name_to_plot=mymat.columns)
-
     pc_df = pd.merge(pc_df, metadata_df, on='name_to_plot')
 
     var_explained_df = pd.DataFrame({
-        'Explained Variances %': pca.explained_variance_ratio_ * 100,
+        'Explained Variance %': pca.explained_variance_ratio_ * 100,
         'PC': ['PC' + str(i) for i in range(1, dims + 1)]})
 
     return pc_df, var_explained_df
@@ -92,20 +88,20 @@ def pca_on_split_dataset(pca_tables_dict, compartment_df, metadata_co_df,
     return pca_tables_dict
 
 
-def send_to_tables(dicoco, out_table_dir) -> None:
+def send_to_tables(pca_results_compartment_dict, out_table_dir) -> None:
     """ Save each result to .csv files """
-    for tup in dicoco.keys():
+    for tup in pca_results_compartment_dict.keys():
         out_table = "--".join(list(tup))
-        for df in dicoco[tup].keys():
-            dicoco[tup][df].to_csv(
+        for df in pca_results_compartment_dict[tup].keys():
+            pca_results_compartment_dict[tup][df].to_csv(
                 os.path.join(out_table_dir, f"pca_{out_table}.csv"),
-                    sep='\t', index=False)
+                sep='\t', index=False)
     logger.info(f"Saved pca tables in {out_table_dir}")
 
 
 def pca_analysis(file_name: data_files_keys_type,
                  dataset: Dataset, cfg: DictConfig,
-                 out_table_dir: str, mode: str) -> [None, dict]:
+                 out_table_dir: str, mode: str) -> Union[None, dict]:
     """
     Generates all PCA results, both global (default) and with splited data.
     If mode is:
