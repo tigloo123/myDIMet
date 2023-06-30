@@ -13,7 +13,7 @@ from visualization.abundance_bars import run_plot_abundance_bars
 from constants import assert_literal, data_files_keys_type
 from visualization.isotopologue_proportions import run_isotopologue_proportions_plot
 from visualization.mean_enrichment_line_plot import run_mean_enrichment_line_plot
-
+from processing.pca_analysis import pca_analysis
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,11 @@ class MeanEnrichmentLinePlotConfig(MethodConfig):
     def build(self) -> "MeanEnrichmentLinePlot":
         return MeanEnrichmentLinePlot(config=self)
 
+
+class PcaAnalysisConfig(MethodConfig):
+    pca_split_further: ListConfig = ["timepoint"]
+    def build(self) -> "PcaAnalysis":
+        return PcaAnalysis(config=self)
 
 
 class Method(BaseModel):
@@ -326,10 +331,48 @@ class MeanEnrichmentLinePlot(Method):
                 )
         except ConfigAttributeError as e:
             logger.error(
-                f"Mandatory parameter not provided in he config file: {e}, aborting"
+                f"Mandatory parameter not provided in the config file: {e}, aborting"
             )
             sys.exit(1)
         except ValueError as e:
             logger.error(f"Data inconsistency: {e}")
             sys.exit(1)
+
+
+class PcaAnalysis(Method):
+    config: PcaAnalysisConfig
+
+    def run(self, cfg: DictConfig, dataset: Dataset) -> None:
+        logger.info("Will perform PCA analysis and save tables, with the following config: %s", self.config)
+        out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
+        os.makedirs(out_table_dir, exist_ok=True)
+        self.check_expectations(cfg, dataset)
+        for file_name in ['abundances', 'mean_enrichment']:
+            logger.info(
+                f"Running pca of {dataset.get_file_for_label(file_name)}")
+            pca_analysis(file_name, dataset, cfg,
+                         out_table_dir=out_table_dir, mode="save_tables")
+
+    def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
+        try:
+            if (dataset.abundances_df is None) and (dataset.mean_enrichment_df is None):
+
+                raise ValueError(
+                    f"abundances and mean_enrichment are missing in [Dataset]"
+                )
+            if (cfg.analysis.method.pca_split_further is not None) and (
+                set(cfg.analysis.method.pca_split_further).intersection(
+                    set(["condition", "timepoint"])) == 0):
+                raise ValueError(
+                    f"Unknown parameters in [config > analysis > method]"
+                )
+        except ConfigAttributeError as e:
+            logger.error(
+                f"Mandatory parameter not provided in the config file: {e}, aborting"
+            )
+            sys.exit(1)
+        except ValueError as e:
+            logger.error(f"Data inconsistency: {e}")
+            sys.exit(1)
+
 

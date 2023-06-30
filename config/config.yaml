@@ -12,5 +12,5 @@ defaults:
 figure_path: figures
 table_path: tables
 
-palette: pastel
-x_text: ''
+palette: pastel # TODO: move to config analysis method abundance plot
+x_text: '' # TODO : move to config analysis method  abundance plot
