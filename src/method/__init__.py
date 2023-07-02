@@ -4,7 +4,6 @@ import sys
 
 from omegaconf import DictConfig, OmegaConf, ListConfig, open_dict
 from omegaconf.errors import ConfigAttributeError
-
 from pydantic import BaseModel as PydanticBaseModel
 from data import Dataset
 from helpers import flatten
@@ -13,7 +12,8 @@ from visualization.abundance_bars import run_plot_abundance_bars
 from constants import assert_literal, data_files_keys_type
 from visualization.isotopologue_proportions import run_isotopologue_proportions_plot
 from visualization.mean_enrichment_line_plot import run_mean_enrichment_line_plot
-from processing.pca_analysis import pca_analysis
+from processing.pca_analysis import run_pca_analysis
+from typing import Union
 
 logger = logging.getLogger(__name__)
 
@@ -104,10 +104,10 @@ class MeanEnrichmentLinePlotConfig(MethodConfig):
 
 
 class PcaAnalysisConfig(MethodConfig):
-    pca_split_further: ListConfig = ["timepoint"]
+    pca_split_further: Union[ListConfig, None] = ["timepoint"]
+
     def build(self) -> "PcaAnalysis":
         return PcaAnalysis(config=self)
-
 
 class Method(BaseModel):
     config: MethodConfig
@@ -352,9 +352,9 @@ class PcaAnalysis(Method):
         ).intersection(dataset.available_datasets)
         for file_name in available_pca_suitable_datatypes:
             logger.info(
-                f"Running pca of {dataset.get_file_for_label(file_name)}")
-            pca_analysis(file_name, dataset, cfg,
-                         out_table_dir=out_table_dir, mode="save_tables")
+                f"Running pca analysis of {dataset.get_file_for_label(file_name)}")
+            run_pca_analysis(file_name, dataset, cfg,
+                             out_table_dir, mode="save_tables")
 
     def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
         try:
@@ -377,5 +377,4 @@ class PcaAnalysis(Method):
         except ValueError as e:
             logger.error(f"Data inconsistency: {e}")
             sys.exit(1)
-
 
