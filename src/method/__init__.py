@@ -14,6 +14,8 @@ from visualization.isotopologue_proportions import run_isotopologue_proportions_
 from visualization.mean_enrichment_line_plot import run_mean_enrichment_line_plot
 from processing.pca_analysis import run_pca_analysis
 from typing import Union
+from visualization.pca_plot import run_pca_plot
+
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +110,17 @@ class PcaAnalysisConfig(MethodConfig):
 
     def build(self) -> "PcaAnalysis":
         return PcaAnalysis(config=self)
+
+
+class PcaPlotConfig(MethodConfig):
+    pca_split_further: Union[ListConfig, None] = ["timepoint"]
+    draw_ellipses: Union[ListConfig, None] = ["condition"]
+    run_iris_demo: bool = False
+
+    def build(self) -> "PcaPlot":
+        return PcaPlot(config=self)
+
+
 
 class Method(BaseModel):
     config: MethodConfig
@@ -343,7 +356,8 @@ class PcaAnalysis(Method):
     config: PcaAnalysisConfig
 
     def run(self, cfg: DictConfig, dataset: Dataset) -> None:
-        logger.info("Will perform PCA analysis and save tables, with the following config: %s", self.config)
+        logger.info("Will perform PCA analysis and save tables, "
+                    "with the following config: %s", self.config)
         out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
         os.makedirs(out_table_dir, exist_ok=True)
         self.check_expectations(cfg, dataset)
@@ -358,14 +372,15 @@ class PcaAnalysis(Method):
 
     def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
         try:
-            if (dataset.abundances_df is None) and (dataset.mean_enrichment_df is None):
-
+            if (dataset.abundances_df is None) and (
+                    dataset.mean_enrichment_df is None
+            ):
                 raise ValueError(
                     f"abundances and mean_enrichment are missing in [Dataset]"
                 )
-            if (cfg.analysis.method.pca_split_further is not None) and (
-                set(cfg.analysis.method.pca_split_further).intersection(
-                    set(["condition", "timepoint"])) == 0):
+            if (cfg.analysis.method.pca_split_further is not None) and not (
+                set(cfg.analysis.method.pca_split_further).issubset(
+                    set(["condition", "timepoint"]))):
                 raise ValueError(
                     f"Unknown parameters in [config > analysis > method]"
                 )
@@ -378,3 +393,56 @@ class PcaAnalysis(Method):
             logger.error(f"Data inconsistency: {e}")
             sys.exit(1)
 
+
+class PcaPlot(Method):
+    config: PcaPlotConfig
+
+    def run(self, cfg: DictConfig, dataset: Dataset) -> None:
+        logger.info("Will perform PCA plots and save figures, "
+                    "with the following config: %s", self.config)
+        out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
+        os.makedirs(out_plot_dir, exist_ok=True)
+        self.check_expectations(cfg, dataset)
+        available_pca_suitable_datatypes = set(
+            ['abundances', 'mean_enrichment']
+        ).intersection(dataset.available_datasets)
+        for file_name in available_pca_suitable_datatypes:
+            # call analysis:
+            pca_results_dict = run_pca_analysis(
+                file_name, dataset, cfg,
+                out_table_dir="",  # no writing tables in PcaPlot Method
+                mode="return_results_dict")
+            # plot:
+            logger.info(
+                f"Running pca plot(s) of {dataset.get_file_for_label(file_name)}")
+            run_pca_plot(pca_results_dict, cfg, out_plot_dir)
+
+    def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
+        try:
+            if (dataset.abundances_df is None) and \
+                    (dataset.mean_enrichment_df is None):
+                raise ValueError(
+                    f"abundances and mean_enrichment are missing in [Dataset]"
+                )
+            if (cfg.analysis.method.pca_split_further is not None) and not (
+                set(cfg.analysis.method.pca_split_further).issubset(
+                    set(["condition", "timepoint"]))):
+                raise ValueError(
+                    f"Unknown parameters in [config > analysis > method > "
+                    f"pca_plot > pca_split_further]"
+                )
+            if (cfg.analysis.method.draw_ellipses is not None) and not (
+                    set(cfg.analysis.method.draw_ellipses).issubset(
+                        set(["condition", "timepoint"]))):
+                raise ValueError(
+                    f"Unknown parameters in [config > analysis > method > "
+                    f"pca_plot > draw_ellipses]"
+                )
+        except ConfigAttributeError as e:
+            logger.error(
+                f"Mandatory parameter not provided in the config file: {e}, aborting"
+            )
+            sys.exit(1)
+        except ValueError as e:
+            logger.error(f"Data inconsistency: {e}")
+            sys.exit(1)
