@@ -114,12 +114,11 @@ class PcaAnalysisConfig(MethodConfig):
 
 class PcaPlotConfig(MethodConfig):
     pca_split_further: Union[ListConfig, None] = ["timepoint"]
-    draw_ellipses: Union[ListConfig, None] = ["condition"]
+    draw_ellipses: Union[str, None] = "condition"
     run_iris_demo: bool = False
 
     def build(self) -> "PcaPlot":
         return PcaPlot(config=self)
-
 
 
 class Method(BaseModel):
@@ -432,8 +431,8 @@ class PcaPlot(Method):
                     f"pca_plot > pca_split_further]"
                 )
             if (cfg.analysis.method.draw_ellipses is not None) and not (
-                    set(cfg.analysis.method.draw_ellipses).issubset(
-                        set(["condition", "timepoint"]))):
+                    cfg.analysis.method.draw_ellipses in
+                    ["condition", "timepoint"]):
                 raise ValueError(
                     f"Unknown parameters in [config > analysis > method > "
                     f"pca_plot > draw_ellipses]"

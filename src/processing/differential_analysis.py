@@ -306,6 +306,7 @@ def pairwise_comparison(
 ) -> pd.DataFrame:
     """
     Runs a pairwise comparison according to the comparison list in the analysis yaml file
+    (in time_course_comparison, comparison list is set in function (no yaml))
     """
     conditions_list = helpers.first_column_for_column_values(
         df=dataset.metadata_df, columns=cfg.analysis.method.grouping, values=comparison
@@ -377,6 +378,7 @@ def differential_comparison(
             )
             logger.info(f"Saved the result in {output_file_name}")
 
+
 def multi_group_compairson(
         file_name: data_files_keys_type, dataset: Dataset, cfg: DictConfig, out_table_dir: str
 ) -> None:
@@ -411,4 +413,106 @@ def multi_group_compairson(
         output_file_name = os.path.join(out_table_dir, f"{base_file_name}.tsv")
         df4c.to_csv(output_file_name, index_label="metabolite", header=True, sep="\t")
         logger.info(f"Saved the result in {output_file_name}")
+
+
+def time_course_auto_list_comparisons(metadata_df) -> List[List[str]]:
+    """
+    returns list of comparisons as list of  [[cond_x, t+1], [cond_x, t]],  ..
+    """
+    time_df = metadata_df[['timepoint', 'timenum']]
+    time_df = time_df.drop_duplicates()
+    time_df['timenum'] = time_df['timenum'].astype(float)
+    time_df = time_df.sort_values(by=['timenum'], ascending=True)
+    time_tuples = list(zip(time_df['timenum'], time_df['timepoint']))
+    conditions_list = metadata_df['condition'].unique().tolist()
+    comparisons_list = list()
+
+    existant_tuples = set(list(zip(metadata_df['condition'],
+                                   metadata_df['timepoint'])))
+    for i in range(len(time_tuples)-1, 0, -1):
+        for cond in conditions_list:
+            if tuple([cond, time_tuples[i][1]]) in existant_tuples and \
+               tuple([cond, time_tuples[i-1][1]]) in existant_tuples:
+                comparisons_list.append([[cond, time_tuples[i][1]],
+                                         [cond, time_tuples[i-1][1]]])
+
+    return comparisons_list
+
+
+def time_course_comparison(file_name: data_files_keys_type,
+                           dataset: Dataset,
+                           cfg: DictConfig,
+                           test: availtest_methods_type,
+                           out_table_dir: str):
+
+    '''
+    Time-course comparison is performed on compartmentalized versions of data files
+    Attention: we replace zero values using the provided method
+    Writes the table(s) with computed statistics in the relevant output directory
+    '''
+
+    assert_literal(test, availtest_methods_type, "Available test")
+    assert_literal(file_name, data_files_keys_type, "file name")
+
+    impute_value = cfg.analysis.method.impute_values[file_name]
+
+    def steps_foo(df, dataset, cfg, comparison, test, compartment,
+                  condition) -> None:
+        result = pairwise_comparison(df, dataset, cfg, comparison,
+                                     test)
+        result["compartment"] = compartment
+        result = reorder_columns_diff_end(result)
+        result = result.sort_values(["padj", "distance/span"],
+                                    ascending=[True, False])
+        comp = "-".join(map(lambda x: "-".join(x), comparison))
+        base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}-{condition}-{comp}-{test}"
+        output_file_name = os.path.join(out_table_dir,
+                                        f"{base_file_name}.tsv")
+        result.to_csv(
+            output_file_name,
+            index_label="metabolite",
+            header=True,
+            sep="\t",
+        )
+        logger.info(f"Saved the result in {output_file_name}")
+
+    for compartment, compartmentalized_df in dataset.compartmentalized_dfs[
+        file_name].items():
+        df = compartmentalized_df
+        val_instead_zero = helpers.arg_repl_zero2value(impute_value, df)
+        df = df.replace(to_replace=0, value=val_instead_zero)
+        time_course_comparisons = time_course_auto_list_comparisons(
+            dataset.metadata_df
+        )
+        metadata_df = dataset.metadata_df
+
+        for comparison in time_course_comparisons:
+            # if cfg.analysis.method.split_by_condition:
+            #     for condition in dataset.config.conditions:
+            #         metadata_cond_df = metadata_df.loc[
+            #             metadata_df['condition'] == condition]
+            #         df_cond = df[metadata_cond_df['name_to_plot']]
+            #         steps_foo(df_cond, dataset, cfg, comparison, test,
+            #                            compartment, condition=condition)
+            # else:
+            #     steps_foo(df, dataset, cfg, comparison, test,
+            #                            compartment, condition="")
+
+            result = pairwise_comparison(df, dataset, cfg, comparison,
+                                         test)
+            result["compartment"] = compartment
+            result = reorder_columns_diff_end(result)
+            result = result.sort_values(["padj", "distance/span"],
+                                        ascending=[True, False])
+            comp = "-".join(map(lambda x: "-".join(x), comparison))
+            base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}-{comp}-{test}"
+            output_file_name = os.path.join(out_table_dir,
+                                            f"{base_file_name}.tsv")
+            result.to_csv(
+                output_file_name,
+                index_label="metabolite",
+                header=True,
+                sep="\t",
+            )
+            logger.info(f"Saved the result in {output_file_name}")
 

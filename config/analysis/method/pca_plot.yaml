@@ -7,5 +7,5 @@ pca_split_further:
   - timepoint
   # - condition
 
-draw_ellipses: null # null if none desired, or [condition, ...]
+draw_ellipses: null # null if none desired, or 'condition' or 'timepoint'
 run_iris_demo: False
