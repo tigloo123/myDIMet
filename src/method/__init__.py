@@ -7,7 +7,8 @@ from omegaconf.errors import ConfigAttributeError
 from pydantic import BaseModel as PydanticBaseModel
 from data import Dataset
 from helpers import flatten
-from processing.differential_analysis import differential_comparison, multi_group_compairson
+from processing.differential_analysis import differential_comparison, \
+    multi_group_compairson, time_course_analysis
 from visualization.abundance_bars import run_plot_abundance_bars
 from constants import assert_literal, data_files_keys_type
 from visualization.isotopologue_proportions import run_isotopologue_proportions_plot
@@ -15,6 +16,7 @@ from visualization.mean_enrichment_line_plot import run_mean_enrichment_line_plo
 from processing.pca_analysis import run_pca_analysis
 from typing import Union
 from visualization.pca_plot import run_pca_plot
+import constants
 
 
 logger = logging.getLogger(__name__)
@@ -41,8 +43,8 @@ class AbundancePlotConfig(MethodConfig):
     barcolor: str = "timepoint"
     axisx: str = "condition"
     axisx_labeltilt: int = 20  # 0 is no tilt
-    width_each_subfig: int = 3
-    wspace_subfigs: int = 1
+    width_each_subfig: int = 3 # TODO: must be float
+    wspace_subfigs: int = 1 # TODO : must be float
 
     def build(self) -> "AbundancePlot":
         return AbundancePlot(config=self)
@@ -119,6 +121,16 @@ class PcaPlotConfig(MethodConfig):
 
     def build(self) -> "PcaPlot":
         return PcaPlot(config=self)
+
+
+class TimeCourseAnalysisConfig(MethodConfig):
+    grouping: ListConfig = ["condition", "timepoint"]
+    qualityDistanceOverSpan: float
+    correction_method: str = "bonferroni"
+    impute_values: DictConfig
+
+    def build(self) -> "TimeCourseAnalysis":
+        return TimeCourseAnalysis(config=self)
 
 
 class Method(BaseModel):
@@ -444,4 +456,52 @@ class PcaPlot(Method):
             sys.exit(1)
         except ValueError as e:
             logger.error(f"Data inconsistency: {e}")
+            sys.exit(1)
+
+
+class TimeCourseAnalysis(Method):
+    def run(self, cfg: DictConfig, dataset: Dataset) -> None:
+        logger.info(f"The current working directory is {os.getcwd()}")
+        logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
+        logger.info(
+            "Will perform time-course analysis, with the following config: %s",
+            self.config)
+        out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
+        os.makedirs(out_table_dir, exist_ok=True)
+        self.check_expectations(cfg, dataset)
+        for file_name, test in cfg.analysis.statistical_test.items():
+            if test is None:
+                continue
+            logger.info(
+                f"Running time-course analysis of {dataset.get_file_for_label(file_name)} using {test} test")
+            time_course_analysis(file_name, dataset, cfg, test,
+                                    out_table_dir=out_table_dir)
+
+    def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
+        user_tests = [t[1] for t in cfg.analysis.statistical_test.items()]
+
+        try:
+            if not set(user_tests).issubset(
+                    set(constants.availtest_methods) )  :
+                raise ValueError(
+                    f"Statistical tests provided in the config file not recognized, aborting"
+                )
+            if not (
+                    len(dataset.metadata_df['timepoint'].unique()) ==
+                    len(dataset.metadata_df['timenum'].unique())
+                    ) and (
+                    len(dataset.metadata_df['timenum'].unique()) ==
+                    len(list(set(list(zip(dataset.metadata_df['timenum'],
+                                        dataset.metadata_df['timenum'])))))
+                    ):
+                raise ValueError(
+                    f"Inconsistent timepoint and timenum columns in metadata"
+                )
+
+        except ConfigAttributeError as e:
+            logger.error(
+                f"Mandatory parameter not provided in the config file:{e}, aborting")
+            sys.exit(1)
+        except ValueError as e:
+            logger.error(f"Data inconsistency:{e}")
             sys.exit(1)
