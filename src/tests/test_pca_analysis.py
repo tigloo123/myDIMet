@@ -8,24 +8,20 @@ import processing.pca_analysis as pca_analysis
 
 class TestPcaAnalysis(TestCase):
 
-    def test_impute_data_df(self):
+    def test_handle_nan_values_before_pca(self):
         data = {
-            "c1": [0.1, 0, np.nan, 2, 0],
-            "c2": [25, 20, np.nan, 35, 0],
-            "c3": [np.nan, 5, np.nan, 4, 0],
-            "c4": [10, 12, np.nan, 34, 0],
+            "c1": [0.1, 0, np.nan, 2],
+            "c2": [25, 20, np.nan, 35],
+            "c3": [np.nan, 5, np.nan, 4],
+            "c4": [10, 12, np.nan, 34],
         }
         df = pd.DataFrame(data)
-        result = pca_analysis.impute_data_df(df)
+        result = pca_analysis.handle_nan_values_before_pca(df)
         self.assertEqual(result.shape[0], 3)
         self.assertEqual(result.shape[1], 4)
         self.assertTrue(
             np.isnan(df.loc[0, 'c3']) and
             result.loc[0, 'c3'] == 0.1
-        )
-        self.assertTrue(
-            df.loc[1, 'c1'] == 0 and
-            result.loc[1, 'c1'] == 0.1
         )
 
     def test_reduce_data_df(self):

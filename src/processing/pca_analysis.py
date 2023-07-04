@@ -20,14 +20,13 @@ from data import Dataset
 logger = logging.getLogger(__name__)
 
 
-def impute_data_df(df: pd.DataFrame) -> pd.DataFrame:
+def handle_nan_values_before_pca(df: pd.DataFrame) -> pd.DataFrame:
     """
-    imputes zero and np.nan values
+    1. drops rows having NaN in all values
+    2. imputes NaN remaining values with the min of the dataframe
     """
-    df = df.loc[~(df == 0).all(axis=1)]  # drop 'zero all' rows
     df = df.dropna(how="all", axis=0)
     df = df.fillna(df[df > 0].min().min())
-    df = df.replace(0, df[df > 0].min().min())
     return df
 
 
@@ -87,15 +86,15 @@ def pca_on_split_dataset(compartment_df: pd.DataFrame,
         metadata_co_ct_df = metadata_co_df.loc[
             metadata_co_df[chosen_column] == cond_or_timepoint, :]
         df = compartment_df[metadata_co_ct_df['name_to_plot']]
-        df = impute_data_df(df)
+        df = handle_nan_values_before_pca(df)
         df = reduce_data_df(df)
         pc_df, var_explained_df = compute_pca(df, metadata_co_ct_df)
 
         key_unique = tuple(
-            [description[0], cond_or_timepoint, description[1]]
+            [description[0],  # index 0 is datatype (eg: abundances)
+             cond_or_timepoint,
+             description[1]]  # index 1 is compartment
         )
-        # description[0] is datatype (eg: abundances)
-        # description[1] is compartment
         pca_tables_dict[key_unique] = {
               'pc': pc_df,
               'var': var_explained_df
@@ -108,7 +107,7 @@ def pca_global_compartment_dataset(df: pd.DataFrame,
                                    metadata_co_df: pd.DataFrame,
                                    description: List[str]):
     df = df[metadata_co_df['name_to_plot']]
-    df = impute_data_df(df)
+    df = handle_nan_values_before_pca(df)
     df = reduce_data_df(df)
     pc_df, var_explained_df = compute_pca(df, metadata_co_df)
 
@@ -146,10 +145,14 @@ def run_pca_analysis(file_name: data_files_keys_type,
 
     pca_results_dict = dict()
 
+    impute_value = cfg.analysis.method.impute_values[file_name]
     for compartment, compartmentalized_df in dataset.compartmentalized_dfs[
         file_name].items():
-
         df = compartmentalized_df
+        df = df[(df.T != 0).any()]  # delete rows being zero all values
+        val_instead_zero = helpers.arg_repl_zero2value(impute_value, df)
+        df = df.replace(to_replace=0, value=val_instead_zero)
+        
         metadata_co_df = metadata_df[metadata_df['short_comp'] == compartment]
 
         pca_compartment_dict = pca_global_compartment_dataset(
@@ -159,11 +162,11 @@ def run_pca_analysis(file_name: data_files_keys_type,
 
         if cfg.analysis.method.pca_split_further is not None:
             for column in cfg.analysis.method.pca_split_further:
-                pca_split_data_dict = pca_on_split_dataset(
+                pca_results_split_data_dict = pca_on_split_dataset(
                      df, metadata_co_df,
                      column,  description=[file_name, compartment]
                 )
-                pca_results_dict.update(pca_split_data_dict)
+                pca_results_dict.update(pca_results_split_data_dict)
             # end for
         # end if
     # end for
