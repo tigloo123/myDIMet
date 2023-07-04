@@ -10,7 +10,6 @@ from sklearn.decomposition import PCA
 from omegaconf import DictConfig
 
 from constants import (
-    availtest_methods_type,
     assert_literal,
     data_files_keys_type,
 )
@@ -131,13 +130,13 @@ def send_to_tables(pca_results_compartment_dict: dict,
 
 
 def run_pca_analysis(file_name: data_files_keys_type,
-                 dataset: Dataset, cfg: DictConfig,
-                 out_table_dir: str, mode: str) -> Union[None, dict]:
+                     dataset: Dataset, cfg: DictConfig,
+                     out_table_dir: str, mode: str) -> Union[None, dict]:
     """
     Generates all PCA results, both global (default) and with splited data.
-    If mode is:
-     - save_tables, the PCA tables are saved to .csv;
-     - return_results_dict, returns the results object (dict)
+     - mode='save_tables', the PCA tables are saved to .csv;
+     or
+     - mode='return_results_dict', returns the results object (dict)
     """
     assert_literal(file_name, data_files_keys_type, "file name")
 
@@ -146,13 +145,13 @@ def run_pca_analysis(file_name: data_files_keys_type,
     pca_results_dict = dict()
 
     impute_value = cfg.analysis.method.impute_values[file_name]
-    for compartment, compartmentalized_df in dataset.compartmentalized_dfs[
-        file_name].items():
+    for compartment, compartmentalized_df in \
+            dataset.compartmentalized_dfs[file_name].items():
         df = compartmentalized_df
         df = df[(df.T != 0).any()]  # delete rows being zero all values
         val_instead_zero = helpers.arg_repl_zero2value(impute_value, df)
         df = df.replace(to_replace=0, value=val_instead_zero)
-        
+
         metadata_co_df = metadata_df[metadata_df['short_comp'] == compartment]
 
         pca_compartment_dict = pca_global_compartment_dataset(
@@ -176,4 +175,3 @@ def run_pca_analysis(file_name: data_files_keys_type,
 
     elif mode == "return_results_dict":
         return pca_results_dict
-

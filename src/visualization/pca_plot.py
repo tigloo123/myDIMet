@@ -36,8 +36,6 @@ def eigsorted(cov: np.array) -> tuple:
     many thanks to :
     https://rayblick.gitbooks.io/my-python-scrapbook/content/
     analysis/plotting/scatterplot_ellipse.html
-
-    use make_ellipse OR eigsorted, but not both
     """
     vals, vecs = np.linalg.eigh(cov)
     order = vals.argsort()[::-1]
@@ -50,12 +48,8 @@ def pca_scatter_plot(pc_df: pd.DataFrame,
                      labels_column: str,
                      ellipses_column: Union[str, None]) -> figure.Figure:
     """
-    returns the scatterplot
-       *args :  options for advanced PCA plotting:
-             args[0] is column name for ellipses
+    returns the scatter plot (a seaborn matplotlib figure)
     """
-
-    # scatterplot
     fig, ax = plt.subplots()
     sns.scatterplot(x="PC1", y="PC2",
                     ax=ax,
@@ -69,8 +63,7 @@ def pca_scatter_plot(pc_df: pd.DataFrame,
     if labels_column != "":
         for i, row in pc_df.iterrows():
             ax.text(pc_df.at[i, 'PC1'] + 0.2, pc_df.at[i, 'PC2'],
-                    pc_df.at[i, labels_column],
-                    size='x-small')
+                    pc_df.at[i, labels_column], size='x-small')
     # end if
     row_xlab = var_explained_df.iloc[0, :]
     row_ylab = var_explained_df.iloc[1, :]
@@ -82,10 +75,10 @@ def pca_scatter_plot(pc_df: pd.DataFrame,
     plt.title("")
 
     if ellipses_column is not None:   # add ellipses if specified in *args
-        myellipsesnames = pc_df[ellipses_column].unique()
-        for lab in myellipsesnames:
-            xdata = pc_df.loc[pc_df[ellipses_column] == lab, 'PC1']
-            ydata = pc_df.loc[pc_df[ellipses_column] == lab, 'PC2']
+        ellipses_groups_list = pc_df[ellipses_column].unique()
+        for group in ellipses_groups_list:
+            xdata = pc_df.loc[pc_df[ellipses_column] == group, 'PC1']
+            ydata = pc_df.loc[pc_df[ellipses_column] == group, 'PC2']
             # get values to build the ellipse
             cov = np.cov(xdata, ydata)
             vals, vecs = eigsorted(cov)
@@ -103,7 +96,8 @@ def pca_scatter_plot(pc_df: pd.DataFrame,
 
 
 def pca_scatter_2_pdf(figure_pc: figure.Figure,
-                      name_elements: List[str], out_plot_dir: str) -> None:
+                      name_elements: List[str],
+                      out_plot_dir: str) -> None:
     name_plot = f"{'--'.join(name_elements)}_pc.pdf"
     figure_pc.savefig(os.path.join(out_plot_dir, name_plot))
 
@@ -114,23 +108,23 @@ def demo_pca_iris(out_plot_dir: str) -> None:
     sns.relplot(data=iris, x="sepal_width", y="petal_width",
                 hue="species")
     iris = iris.assign(name_to_plot=[str(i) for i in iris.index])
-    fakemeta = iris[['name_to_plot', "species"]]
+    iris_metadata = iris[['name_to_plot', "species"]]
     iris = iris.drop(columns=['name_to_plot', "species"])
-    fakedf = iris.T  # variables rows, samples columns
-    fakedf = fakedf.div(fakedf.std(axis=1, ddof=0), axis=0)
-    fakedf.columns = [str(i) for i in iris.index]
-    X = np.transpose(np.array(fakedf))
+    df = iris.T  # variables rows, samples columns
+    df = df.div(df.std(axis=1, ddof=0), axis=0)
+    df.columns = [str(i) for i in iris.index]
+    X = np.transpose(np.array(df))
     pca = PCA(n_components=4)
     pc = pca.fit_transform(X)
     pc_df = pd.DataFrame(data=pc,
                          columns=['PC' + str(i) for i in range(1, 4 + 1)])
-    pc_df = pc_df.assign(name_to_plot=fakedf.columns)
-    pc_df = pd.merge(pc_df, fakemeta, on='name_to_plot')
+    pc_df = pc_df.assign(name_to_plot=df.columns)
+    pc_df = pd.merge(pc_df, iris_metadata, on='name_to_plot')
     var_explained_df = pd.DataFrame({
         'Explained Variance %': pca.explained_variance_ratio_ * 100,
         'PC': ['PC' + str(i) for i in range(1, 4 + 1)]})
 
-    name_elements = ['Iris', 'demo']
+    name_elements = ['IrisDemo']
     scatter_fig = pca_scatter_plot(pc_df,
                                    var_explained_df, "species",
                                    "species", labels_column="",
@@ -146,16 +140,17 @@ def run_pca_plot(pca_results_dict: dict,  cfg: DictConfig,
     for tup in pca_results_dict.keys():
         pc_df = pca_results_dict[tup]['pc']
         var_explained_df = pca_results_dict[tup]['var']
-        figure_var = variance_expl_plot(var_explained_df)
+        figure_var: figure.Figure = variance_expl_plot(var_explained_df)
         name_plot_var = f"{'--'.join(tup)}_var.pdf"
         figure_var.savefig(os.path.join(out_plot_dir, name_plot_var))
-
+        plt.close()
         options_labels = {'label-y': "name_to_plot",
                           'label-n': ""}  # when empty string, no dot labels
+        # scatter: save both versions, labeled dots and unlabeled dots:
         for choice in options_labels.keys():
             labels_column = options_labels[choice]
             name_elements = list(tup) + [choice]
-            scatter_fig = pca_scatter_plot(
+            scatter_fig: figure.Figure = pca_scatter_plot(
                 pc_df,  var_explained_df, "condition",
                 "condition", labels_column,
                 ellipses_column=cfg.analysis.method.draw_ellipses)
