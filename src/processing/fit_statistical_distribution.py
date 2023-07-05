@@ -5,8 +5,6 @@
 """
 
 import warnings
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
@@ -23,16 +21,15 @@ def compute_z_score(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
     return df
 
 
-def find_best_distribution(df: pd.DataFrame):  # , out_histogram_distribution: str):
+def find_best_distribution(df: pd.DataFrame):
     """
     Find the best distribution among all the scipy.stats distributions
     and return it together with its parameters
     """
     logger.info("Fitting a distribution")
-    dist = np.around(np.array((df["zscore"]).astype(float)), 5)  # TODO : why the rounding ?
+    dist = np.around(np.array((df["zscore"]).astype(float)), 5)
 
     best_dist, best_dist_name, best_fit_params = get_best_fit(dist)
-    # out_histogram_distribution)
 
     logger.info(f"Best fit is {best_dist_name} with {best_fit_params}")
     args_param = dict(e.split("=") for e in best_fit_params.split(", "))
@@ -45,9 +42,7 @@ def find_best_distribution(df: pd.DataFrame):  # , out_histogram_distribution: s
     return best_distribution, args_param
 
 
-def get_best_fit(input_array):  # , out_file):
-    matplotlib.rcParams["figure.figsize"] = (16.0, 12.0)
-    matplotlib.style.use("ggplot")
+def get_best_fit(input_array):
     """Return the best fit distribution to data and its parameters"""
 
     # Load data
@@ -58,59 +53,17 @@ def get_best_fit(input_array):  # , out_file):
 
     best_dist = getattr(stats, best_fit_name)
 
-    # Make probability density function (PDF) with best params
-    pdf = make_pdf(best_dist, best_fit_params)
-
     # parameters
-    param_names = (best_dist.shapes + ", loc, scale").split(", ") if best_dist.shapes else ["loc", "scale"]
-    param_str = ", ".join(["{}={:0.2f}".format(k, v) for k, v in zip(param_names, best_fit_params)])
-
-    # Display
-    # dist_str = '{} ({})'.format(best_fit_name, param_str)
-    # plot_best_fit(data, dist_str, pdf, out_file)
+    param_names = (best_dist.shapes + ", loc, scale").split(", ") if \
+        best_dist.shapes else ["loc", "scale"]
+    param_str = ", ".join(["{}={:0.2f}".format(k, v)
+                           for k, v in zip(param_names, best_fit_params)])
 
     return best_dist, best_fit_name, param_str
 
 
-def plot_best_fit(data, dist_str, pdf, out_file): #TODO: either remove or place in visualization
-    plt.figure(figsize=(12, 8))
-    plt.hist(data, bins="auto", density=True, alpha=0.5, label="Data")
-    plt.plot(pdf, lw=2, label="PDF")
-    plt.legend(loc="upper right", shadow=True, fontsize="x-large")
-    plt.title("Best fit distribution \n" + dist_str)
-    plt.xlabel("z-score")
-    plt.ylabel("frequency")
-    # plt.set_title(u'Best fit distribution \n' + dist_str)
-    plt.savefig(out_file)
-    return
-
-
-def make_pdf(dist, params, size=10000):
-    """Generate distributions's Probability Distribution Function"""
-
-    # Separate parts of parameters
-    arg = params[:-2]
-    loc = params[-2]
-    scale = params[-1]
-
-    # Get sane start and end points of distribution
-    start = dist.ppf(0.01, *arg, loc=loc, scale=scale) if arg else dist.ppf(0.01, loc=loc, scale=scale)
-    end = dist.ppf(0.99, *arg, loc=loc, scale=scale) if arg else dist.ppf(0.99, loc=loc, scale=scale)
-
-    # Build PDF and turn into pandas Series
-    x = np.linspace(start, end, size)
-    y = dist.pdf(x, loc=loc, scale=scale, *arg)
-    pdf = pd.Series(y, x)
-
-    return pdf
-
-
 def best_fit_distribution(data, bins=200):
     # TODO: try and catch exception and warnings
-
-    matplotlib.rcParams["figure.figsize"] = (16.0, 12.0)
-    matplotlib.style.use("ggplot")
-
     """Model data by finding best fit distribution to data"""
     # Get histogram of original data
     y, x = np.histogram(data, bins=bins, density=True)

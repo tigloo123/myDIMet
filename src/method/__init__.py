@@ -16,6 +16,8 @@ from visualization.mean_enrichment_line_plot import run_mean_enrichment_line_plo
 from processing.pca_analysis import run_pca_analysis
 from typing import Union
 from visualization.pca_plot import run_pca_plot
+from visualization.distr_fit_plot import run_distr_fit_plot
+
 import constants
 
 
@@ -131,6 +133,15 @@ class TimeCourseAnalysisConfig(MethodConfig):
 
     def build(self) -> "TimeCourseAnalysis":
         return TimeCourseAnalysis(config=self)
+
+
+class DistrFitPlotConfig(MethodConfig):
+    grouping: ListConfig = ["condition", "timepoint"]
+    qualityDistanceOverSpan: float
+    impute_values: DictConfig
+
+    def build(self) -> "DistrFitPlot":
+        return DistrFitPlot(config=self)
 
 
 class Method(BaseModel):
@@ -498,6 +509,46 @@ class TimeCourseAnalysis(Method):
                     f"Inconsistent timepoint and timenum columns in metadata"
                 )
 
+        except ConfigAttributeError as e:
+            logger.error(
+                f"Mandatory parameter not provided in the config file:{e}, aborting")
+            sys.exit(1)
+        except ValueError as e:
+            logger.error(f"Data inconsistency:{e}")
+            sys.exit(1)
+
+
+class DistrFitPlot(Method):
+    def run(self, cfg: DictConfig, dataset: Dataset) -> None:
+        logger.info(f"The current working directory is {os.getcwd()}")
+        logger.info("Current configuration is %s", OmegaConf.to_yaml(cfg))
+        logger.info(
+            "Will perform distribution fitting plots, with the following config: %s",
+            self.config)
+        out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
+        os.makedirs(out_plot_dir, exist_ok=True)
+        self.check_expectations(cfg, dataset)
+        for file_name, test in cfg.analysis.statistical_test.items():
+            if test is None:
+                continue
+            elif test == "disfit":
+                logger.info(
+                    f"Running plot of {dataset.get_file_for_label(file_name)}")
+                if cfg.analysis.comparisons is not None:  # pairwise
+                    run_distr_fit_plot(file_name, dataset, cfg, test,
+                              out_plot_dir=out_plot_dir,
+                              mode="pairwise")
+                else:
+                    continue
+                    # set mode when time_course ? ( risk of too many plots!)
+
+    def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
+        user_tests = [t[1] for t in cfg.analysis.statistical_test.items()]
+        try:
+            if "disfit" not in user_tests:
+                raise ValueError(
+                    f"No distribution fitting in config file, aborting"
+                )
         except ConfigAttributeError as e:
             logger.error(
                 f"Mandatory parameter not provided in the config file:{e}, aborting")
