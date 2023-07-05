@@ -29,10 +29,12 @@ logger = logging.getLogger(__name__)
 
 def compute_span_incomparison(df: pd.DataFrame, groups: List) -> pd.DataFrame:
     """
-    For each row in the input DataFrame, computes the difference between the maximum and minimum values
+    For each row in the input DataFrame, computes the difference between
+    the maximum and minimum values
     from columns in two sublists provided in the 'groups' list.
     Returns:
-         DataFrame with an additional 'span_allsamples' column containing the computed differences.
+         DataFrame with an additional 'span_allsamples' column containing
+         the computed differences.
     """
     for i in df.index.values:
         all_values = list(df.loc[i, groups[0]]) + list(df.loc[i, groups[1]])
@@ -41,12 +43,6 @@ def compute_span_incomparison(df: pd.DataFrame, groups: List) -> pd.DataFrame:
         df.loc[i, "span_allsamples"] = interval
 
     return df
-
-
-def calc_ratios(df4c: pd.DataFrame, groups: List) -> pd.DataFrame:
-    df4c = helpers.calculate_gmean(df4c, groups)
-
-    return df4c
 
 
 def divide_groups(df4c, metad4c, selected_contrast):
@@ -64,32 +60,69 @@ def divide_groups(df4c, metad4c, selected_contrast):
 
 def distance_or_overlap(df: pd.DataFrame, groups: List) -> pd.DataFrame:
     """
-    For each row in the input DataFrame, computes the distance or overlap between intervals
-    provided as sublists of column names in the 'groups' list.
+    For each row in the input DataFrame, computes the distance or overlap
+    between intervals provided as sublists of column names
+     in the 'groups' list.
     Returns:
-        DataFrame with an additional 'distance' column containing computed distances.
+        DataFrame with an additional 'distance' column containing
+        computed distances.
     """
     for i in df.index.values:
         group1 = df.loc[i, groups[0]].values
         group2 = df.loc[i, groups[1]].values
-        overlap_method = "symmetric"  # Modify as needed, can be "symmetric" or "asymmetric"
-        df.at[i, "distance"] = helpers.compute_distance_between_intervals(group1, group2, overlap_method)
+        overlap_method = "symmetric"  # Modify as needed,
+        # can be "symmetric" or "asymmetric"
+        df.at[i, "distance"] = helpers.compute_distance_between_intervals(
+            group1, group2, overlap_method)
 
     return df
 
 
-def select_rows_with_sufficient_non_nan_values(df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
+def select_rows_with_sufficient_non_nan_values___previous_version(
+        df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
     """
     Identifies rows in the input DataFrame that have enough replicates.
-    Separates the DataFrame into two parts based on the presence or absence of enough replicates,
+    Separates the DataFrame into two parts based on the presence or absence
+    of enough replicates,
     returning them as separate DataFrames.
     """
+    # TODO:  this is too stringent --> !
+    #  ! -- > changed  to: len([not NaN values]) >= 2  in each group
+    # see the  re-writen function select_rows_with_sufficient_non_nan_values
     try:
-        bad_df = df[(df["count_nan_samples_group1"] > 0) | (df["count_nan_samples_group2"] > 0)]
-        good_df = df[(df["count_nan_samples_group1"] == 0) & (df["count_nan_samples_group2"] == 0)]
-        # removed the side effect
-        # good_df = good_df.drop(columns=['count_nan_samples_group1', 'count_nan_samples_group2'])
-        # bad_df = bad_df.drop(columns=['count_nan_samples_group1', 'count_nan_samples_group2'])
+        bad_df = df[(df["count_nan_samples_group1"] > 0) | (
+                    df["count_nan_samples_group2"] > 0)]
+        good_df = df[(df["count_nan_samples_group1"] == 0) & (
+                    df["count_nan_samples_group2"] == 0)]
+
+    except Exception as e:
+        print(e)
+        print("Error in separate_before_stats (enough replicates ?)")
+
+    return good_df, bad_df
+
+
+def select_rows_with_sufficient_non_nan_values(
+        df: pd.DataFrame, groups: List[List[str]]
+) -> (pd.DataFrame, pd.DataFrame):
+    """
+    Identifies rows in the input DataFrame that have enough replicates.
+    Separates the DataFrame into two parts based on the presence or absence
+    of enough replicates per group:  at least >= 2 valid values in each group
+    returning them as separate DataFrames.
+    """
+    size_group1 = len(groups[0])
+    size_group2 = len(groups[1])
+    try:
+        good_df = df[
+            ((size_group1 - df['count_nan_samples_group1']) >= 2) &
+            ((size_group2 - df['count_nan_samples_group2']) >= 2)
+            ]
+        bad_df = df[
+            ((size_group1 - df['count_nan_samples_group1']) <= 1) |
+            ((size_group2 - df['count_nan_samples_group2']) <= 1)
+            ]
+
     except Exception as e:
         print(e)
         print("Error in separate_before_stats (enough replicates ?)")
@@ -147,10 +180,11 @@ def compute_mann_whitney_allH0(vInterest, vBaseline):
     return stat_result, pval_result
 
 
-# TODO: removed "stat" as it seems not to be used anywhere but creates conflits with disfit
-def run_statistical_test(df: pd.DataFrame, comparison: List, test: str) -> pd.DataFrame:
+def run_statistical_test(df: pd.DataFrame, comparison: List,
+                         test: str) -> pd.DataFrame:
     """
-    This is a switch function for computing statistics for a pairwise differential analysis
+    This is a switch function for computing statistics for a pairwise
+    differential analysis
     The comparison is a list with 2 sublists that contain column names
     """
     metabolites = df.index.values
@@ -171,24 +205,30 @@ def run_statistical_test(df: pd.DataFrame, comparison: List, test: str) -> pd.Da
             )
 
         if test == "MW":
-            stat_result, pval_result = compute_mann_whitney_allH0(vInterest, vBaseline)
+            stat_result, pval_result = compute_mann_whitney_allH0(vInterest,
+                                                                  vBaseline)
 
         elif test == "Tt":
-            stat_result, pval_result = scipy.stats.ttest_ind(vInterest, vBaseline, alternative="two-sided")
+            stat_result, pval_result = scipy.stats.ttest_ind(
+                vInterest, vBaseline, alternative="two-sided")
 
         elif test == "KW":
-            stat_result, pval_result = scipy.stats.kruskal(vInterest, vBaseline)
+            stat_result, pval_result = scipy.stats.kruskal(vInterest,
+                                                           vBaseline)
 
         elif test == "ranksum":
-            stat_result, pval_result = helpers.compute_ranksums_allH0(vInterest, vBaseline)
+            stat_result, pval_result = helpers.compute_ranksums_allH0(
+                vInterest, vBaseline)
 
         elif test == "Wcox":
             # signed-rank test: one sample (independence),
             # or two paired or related samples
-            stat_result, pval_result = helpers.compute_wilcoxon_allH0(vInterest, vBaseline)
+            stat_result, pval_result = helpers.compute_wilcoxon_allH0(
+                vInterest, vBaseline)
 
         elif test == "BrMu":
-            stat_result, pval_result = helpers.compute_brunnermunzel_allH0(vInterest, vBaseline)
+            stat_result, pval_result = helpers.compute_brunnermunzel_allH0(
+                vInterest, vBaseline)
 
         elif test == "prm-scipy":
             # test statistic is absolute geommean differences,
@@ -221,21 +261,18 @@ def run_statistical_test(df: pd.DataFrame, comparison: List, test: str) -> pd.Da
 def auto_detect_tailway(good_df, best_distribution, args_param):
     min_pval_ = list()
     for tail_way in ["two-sided", "right-tailed"]:
-        tmp = compute_p_value(good_df, tail_way, best_distribution, args_param)
+        tmp = compute_p_value(good_df, tail_way, best_distribution,
+                              args_param)
 
         min_pval_.append(tuple([tail_way, tmp["pvalue"].min()]))
 
     return min(min_pval_, key=lambda x: x[1])[0]
 
 
-# TODO: inside of run_distribution there is a hidden visualization,
-#  removed it to avoid having to pass the file name deep in the call stack
-#  instead just logging the distribution name and parameters
-#  If plotting is needed, it has to be done in the 'visualization' folder
 def run_distribution_fitting(df: pd.DataFrame):
     df = fit_statistical_distribution.compute_z_score(df, "FC")
-    best_distribution, args_param = fit_statistical_distribution.find_best_distribution(df)
-    # out_histogram_distribution=out_histo_file)
+    best_distribution, args_param = \
+        fit_statistical_distribution.find_best_distribution(df)
     autoset_tailway = auto_detect_tailway(df, best_distribution, args_param)
     logger.info(f"auto, best pvalues calculated : {autoset_tailway}")
     df = compute_p_value(df, autoset_tailway, best_distribution, args_param)
@@ -243,26 +280,30 @@ def run_distribution_fitting(df: pd.DataFrame):
     return df
 
 
-def compute_p_value(df: pd.DataFrame, test: str, best_dist, args_param) -> pd.DataFrame:
+def compute_p_value(df: pd.DataFrame, test: str, best_dist,
+                    args_param) -> pd.DataFrame:
     if test == "right-tailed":
         df["pvalue"] = 1 - best_dist.cdf(df["zscore"], **args_param)
     elif test == "two-sided":
-        df["pvalue"] = 2 * (1 - best_dist.cdf(abs(df["zscore"]), **args_param))
+        df["pvalue"] = 2 * (
+                    1 - best_dist.cdf(abs(df["zscore"]), **args_param))
     else:
-        print("WARNING: two-tailed or not")  # TODO: clarify the warning message
+        print(
+            "WARNING: two-tailed or not")  # TODO: clarify the warning message
     return df
 
 
 def filter_diff_results(ratiosdf, padj_cutoff, log2FC_abs_cutoff):
     ratiosdf["abslfc"] = ratiosdf["log2FC"].abs()
-    ratiosdf = ratiosdf.loc[(ratiosdf["padj"] <= padj_cutoff) & (ratiosdf["abslfc"] >= log2FC_abs_cutoff), :]
-    ratiosdf = ratiosdf.sort_values(["padj", "pvalue", "distance/span"], ascending=[True, True, False])
+    ratiosdf = ratiosdf.loc[(ratiosdf["padj"] <= padj_cutoff) & (
+                ratiosdf["abslfc"] >= log2FC_abs_cutoff), :]
+    ratiosdf = ratiosdf.sort_values(["padj", "pvalue", "distance/span"],
+                                    ascending=[True, True, False])
     ratiosdf = ratiosdf.drop(columns=["abslfc"])
 
     return ratiosdf
 
 
-# TODO : the intention is not clear, why do this?
 def reorder_columns_diff_end(df: pd.DataFrame) -> pd.DataFrame:
     standard_cols = [
         "count_nan_samples_group1",
@@ -297,23 +338,30 @@ def reorder_columns_diff_end(df: pd.DataFrame) -> pd.DataFrame:
     # reorder the standard part
     standard_df = standard_df[desired_order]
     # re-join them, indexes are the metabolites
-    df = pd.merge(standard_df, df, left_index=True, right_index=True, how="left")
+    df = pd.merge(standard_df, df, left_index=True, right_index=True,
+                  how="left")
     return df
 
 
 def pairwise_comparison(
-    df: pd.DataFrame, dataset: Dataset, cfg: DictConfig, comparison: List[str], test: availtest_methods_type
+        df: pd.DataFrame, dataset: Dataset, cfg: DictConfig,
+        comparison: List[str], test: availtest_methods_type
 ) -> pd.DataFrame:
     """
-    Runs a pairwise comparison according to the comparison list in the analysis yaml file
+    Runs a pairwise comparison according to the comparison list
+    in the analysis yaml file
     (in time_course_analysis, comparison list is set by function (not yaml))
     """
     conditions_list = helpers.first_column_for_column_values(
-        df=dataset.metadata_df, columns=cfg.analysis.method.grouping, values=comparison
+        df=dataset.metadata_df, columns=cfg.analysis.method.grouping,
+        values=comparison
     )
-    # flatten the list of lists and select the subset of column names present in the sub dataframe
-    columns = [i for i in reduce(operator.concat, conditions_list) if i in df.columns]
-    this_comparison = [list(filter(lambda x: x in columns, sublist)) for sublist in conditions_list]
+    # flatten the list of lists and select the subset of column names
+    # present in the sub dataframe
+    columns = [i for i in reduce(operator.concat, conditions_list) if
+               i in df.columns]
+    this_comparison = [list(filter(lambda x: x in columns, sublist)) for
+                       sublist in conditions_list]
     df4c = df[columns].copy()
     df4c = df4c[(df4c.T != 0).any()]  # delete rows being zero everywhere
     df4c = df4c.dropna(axis=0, how="all")
@@ -323,7 +371,9 @@ def pairwise_comparison(
     df4c = compute_span_incomparison(df4c, this_comparison)
     df4c["distance/span"] = df4c.distance.div(df4c.span_allsamples)
     df4c = helpers.calculate_gmean(df4c, this_comparison)
-    df_good, df_bad = select_rows_with_sufficient_non_nan_values(df4c)
+    print(this_comparison)
+    df_good, df_bad = select_rows_with_sufficient_non_nan_values(
+        df4c, groups=this_comparison)
 
     if test == "disfit":
         df_good = run_distribution_fitting(df_good)
@@ -331,14 +381,16 @@ def pairwise_comparison(
         result_test_df = run_statistical_test(df_good, this_comparison, test)
         assert result_test_df.shape[0] == df_good.shape[0]
         result_test_df.set_index("metabolite", inplace=True)
-        df_good = pd.merge(df_good, result_test_df, left_index=True, right_index=True)
+        df_good = pd.merge(df_good, result_test_df, left_index=True,
+                           right_index=True)
 
     df_good["log2FC"] = np.log2(df_good["FC"])
 
     df_good, df_no_padj = helpers.split_rows_by_threshold(
         df_good, "distance/span", cfg.analysis.method.qualityDistanceOverSpan
     )
-    df_good = helpers.compute_padj_version2(df_good, 0.05, cfg.analysis.method.correction_method)
+    df_good = helpers.compute_padj(df_good, 0.05,
+                                   cfg.analysis.method.correction_method)
 
     # re-integrate the "bad" sub-dataframes to the full dataframe
     result = helpers.concatenate_dataframes(df_good, df_bad, df_no_padj)
@@ -346,10 +398,12 @@ def pairwise_comparison(
 
 
 def differential_comparison(
-    file_name: data_files_keys_type, dataset: Dataset, cfg: DictConfig, test: availtest_methods_type, out_table_dir: str
+        file_name: data_files_keys_type, dataset: Dataset, cfg: DictConfig,
+        test: availtest_methods_type, out_table_dir: str
 ) -> None:
     """
-    Differential comparison is performed on compartemnatalized versions of data files
+    Differential comparison is performed on compartemnatalized versions
+    of data files
     Attention: we replace zero values using the provided method
     Writes the table with computed statistics in the relevant output directory
     """
@@ -357,8 +411,10 @@ def differential_comparison(
     assert_literal(file_name, data_files_keys_type, "file name")
 
     impute_value = cfg.analysis.method.impute_values[file_name]
-    for compartment, compartmentalized_df in dataset.compartmentalized_dfs[file_name].items():
+    for compartment, compartmentalized_df in \
+            dataset.compartmentalized_dfs[file_name].items():
         df = compartmentalized_df
+        df = df[(df.T != 0).any()]
         val_instead_zero = helpers.arg_repl_zero2value(impute_value, df)
         df = df.replace(to_replace=0, value=val_instead_zero)
 
@@ -366,10 +422,13 @@ def differential_comparison(
             result = pairwise_comparison(df, dataset, cfg, comparison, test)
             result["compartment"] = compartment
             result = reorder_columns_diff_end(result)
-            result = result.sort_values(["padj", "distance/span"], ascending=[True, False])
+            result = result.sort_values(["padj", "distance/span"],
+                                        ascending=[True, False])
             comp = "-".join(map(lambda x: "-".join(x), comparison))
-            base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}-{comp}-{test}"
-            output_file_name = os.path.join(out_table_dir, f"{base_file_name}.tsv")
+            base_file_name = dataset.get_file_for_label(file_name)
+            base_file_name += f"--{compartment}-{comp}-{test}"
+            output_file_name = os.path.join(out_table_dir,
+                                            f"{base_file_name}.tsv")
             result.to_csv(
                 output_file_name,
                 index_label="metabolite",
@@ -380,7 +439,8 @@ def differential_comparison(
 
 
 def multi_group_compairson(
-        file_name: data_files_keys_type, dataset: Dataset, cfg: DictConfig, out_table_dir: str
+        file_name: data_files_keys_type, dataset: Dataset, cfg: DictConfig,
+        out_table_dir: str
 ) -> None:
     '''
     Multi-sample comparison using Kruskal-Wallis non-parametric  method
@@ -389,8 +449,10 @@ def multi_group_compairson(
     assert_literal(file_name, data_files_keys_type, "file name")
 
     impute_value = cfg.analysis.method.impute_values[file_name]
-    for compartment, compartmentalized_df in dataset.compartmentalized_dfs[file_name].items():
+    for compartment, compartmentalized_df in\
+            dataset.compartmentalized_dfs[file_name].items():
         df = compartmentalized_df
+        df = df[(df.T != 0).any()]
         val_instead_zero = helpers.arg_repl_zero2value(impute_value, df)
         df = df.replace(to_replace=0, value=val_instead_zero)
 
@@ -398,20 +460,26 @@ def multi_group_compairson(
             df=dataset.metadata_df, columns=cfg.analysis.method.grouping,
             values=cfg.analysis.conditions
         )
-        # flatten the list of lists and select the subset of column names present in the sub dataframe
-        columns = [i for i in reduce(operator.concat, conditions_list) if i in df.columns]
+        # flatten the list of lists and select the subset of column names
+        # present in the sub dataframe
+        columns = [i for i in reduce(operator.concat, conditions_list) if
+                   i in df.columns]
         df4c = df[columns].copy()
         df4c = df4c[(df4c.T != 0).any()]  # delete rows being zero everywhere
         df4c = df4c.dropna(axis=0, how="all")
 
         df4c = helpers.row_wise_nanstd_reduction(df4c)
-        this_comparison = [list(filter(lambda x: x in columns, sublist)) for sublist in conditions_list]
+        this_comparison = [list(filter(lambda x: x in columns, sublist)) for
+                           sublist in conditions_list]
         df4c = helpers.apply_multi_group_kruskal_wallis(df4c, this_comparison)
-        df4c = helpers.compute_padj_version2(df4c, 0.05, cfg.analysis.method.correction_method)
-
-        base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}--multigroup"
-        output_file_name = os.path.join(out_table_dir, f"{base_file_name}.tsv")
-        df4c.to_csv(output_file_name, index_label="metabolite", header=True, sep="\t")
+        df4c = helpers.compute_padj(df4c, 0.05,
+                                    cfg.analysis.method.correction_method)
+        base_file_name = dataset.get_file_for_label(file_name)
+        base_file_name += f"--{compartment}--multigroup"
+        output_file_name = os.path.join(out_table_dir,
+                                        f"{base_file_name}.tsv")
+        df4c.to_csv(output_file_name, index_label="metabolite", header=True,
+                    sep="\t")
         logger.info(f"Saved the result in {output_file_name}")
 
 
@@ -429,26 +497,27 @@ def time_course_auto_list_comparisons(metadata_df) -> List[List[List[str]]]:
 
     existant_tuples = set(list(zip(metadata_df['condition'],
                                    metadata_df['timepoint'])))
-    for i in range(len(time_tuples)-1, 0, -1):
+    for i in range(len(time_tuples) - 1, 0, -1):
         for cond in conditions_list:
             if tuple([cond, time_tuples[i][1]]) in existant_tuples and \
-               tuple([cond, time_tuples[i-1][1]]) in existant_tuples:
+                    tuple([cond, time_tuples[i - 1][1]]) in existant_tuples:
                 comparisons_list.append([[cond, time_tuples[i][1]],
-                                         [cond, time_tuples[i-1][1]]])
+                                         [cond, time_tuples[i - 1][1]]])
 
     return comparisons_list
 
 
 def time_course_analysis(file_name: data_files_keys_type,
-                           dataset: Dataset,
-                           cfg: DictConfig,
-                           test: availtest_methods_type,
-                           out_table_dir: str):
-
+                         dataset: Dataset,
+                         cfg: DictConfig,
+                         test: availtest_methods_type,
+                         out_table_dir: str):
     '''
-    Time-course comparison is performed on compartmentalized versions of data files
+    Time-course comparison is performed on compartmentalized versions of
+    data files
     Attention: we replace zero values using the provided method
-    Writes the table(s) with computed statistics in the relevant output directory
+    Writes the table(s) with computed statistics in the relevant
+     output directory
     '''
 
     assert_literal(test, availtest_methods_type, "Available test")
@@ -456,10 +525,10 @@ def time_course_analysis(file_name: data_files_keys_type,
 
     impute_value = cfg.analysis.method.impute_values[file_name]
 
-
-    for compartment, compartmentalized_df in dataset.compartmentalized_dfs[
-        file_name].items():
+    for compartment, compartmentalized_df in \
+            dataset.compartmentalized_dfs[file_name].items():
         df = compartmentalized_df
+        df = df[(df.T != 0).any()]
         val_instead_zero = helpers.arg_repl_zero2value(impute_value, df)
         df = df.replace(to_replace=0, value=val_instead_zero)
 
@@ -475,7 +544,8 @@ def time_course_analysis(file_name: data_files_keys_type,
             result = result.sort_values(["padj", "distance/span"],
                                         ascending=[True, False])
             comp = "-".join(map(lambda x: "-".join(x), comparison))
-            base_file_name = f"{dataset.get_file_for_label(file_name)}--{compartment}-{comp}-{test}"
+            base_file_name = dataset.get_file_for_label(file_name)
+            base_file_name += f"--{compartment}-{comp}-{test}"
             output_file_name = os.path.join(out_table_dir,
                                             f"{base_file_name}.tsv")
             result.to_csv(
@@ -485,4 +555,3 @@ def time_course_analysis(file_name: data_files_keys_type,
                 sep="\t",
             )
             logger.info(f"Saved the result in {output_file_name}")
-

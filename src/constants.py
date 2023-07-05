@@ -45,9 +45,9 @@ correction_methods_type = Literal[
     "bonferroni", "sidak", "holm-sidak", "holm", "simes-hochberg", "hommel", "fdr_bh", "fdr_by", "fdr_tsbh", "fdr_tsbky"
 ]
 
-comparison_modes = ["pairwise", "multigroup"]
+comparison_modes = ["pairwise", "multigroup"]  # TODO: verify if ever used
 
-comparison_modes_types = Literal["pairwise", "multigroup"]
+comparison_modes_types = Literal["pairwise", "multigroup"]  # TODO: verify if ever used
 
 overlap_methods = ["symmetric", "asymmetric"]
 

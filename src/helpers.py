@@ -3,8 +3,6 @@
 """
 @author: Johanna Galvis, Florian Specque, Macha Nikolski
 """
-
-import os
 from typing import Dict, List
 import scipy
 from collections.abc import Iterable
@@ -12,7 +10,6 @@ import statsmodels.stats.multitest as ssm
 import numpy as np
 import pandas as pd
 from scipy import stats
-import locale
 import logging
 from functools import reduce
 
@@ -20,10 +17,12 @@ from constants import assert_literal, overlap_methods_types
 
 logger = logging.getLogger(__name__)
 
-# TODO: there is no version1, change name?
-def compute_padj_version2(df: pd.DataFrame, correction_alpha: float, correction_method: str) -> pd.DataFrame:
+
+def compute_padj(df: pd.DataFrame, correction_alpha: float,
+                 correction_method: str) -> pd.DataFrame:
     '''
-    Performs multiple hypothesis testing correction on the p-values in the DataFrame
+    Performs multiple hypothesis testing correction on the p-values in the
+    DataFrame.
     Deals with the situation where pvalue column can contain np.nan values
     Adds a new column called "padj" with the adjusted p-values.
     '''
@@ -31,7 +30,9 @@ def compute_padj_version2(df: pd.DataFrame, correction_alpha: float, correction_
     # inspired from R documentation in p.adjust :
     tmp["pvalue"] = tmp[["pvalue"]].fillna(1)
 
-    (sgs, corrP, _, _) = ssm.multipletests(tmp["pvalue"], alpha=float(correction_alpha), method=correction_method)
+    (sgs, corrP, _, _) = ssm.multipletests(tmp["pvalue"],
+                                           alpha=float(correction_alpha),
+                                           method=correction_method)
     df = df.assign(padj=corrP)
     truepadj = []
     for v, w in zip(df["pvalue"], df["padj"]):
@@ -43,18 +44,23 @@ def compute_padj_version2(df: pd.DataFrame, correction_alpha: float, correction_
 
     return df
 
+
 def row_wise_nanstd_reduction(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Performs a row-wise reduction of the DataFrame by dividing each value by its row's standard deviation,
+    Performs a row-wise reduction of the DataFrame by dividing each value
+    by its row's standard deviation,
     considering the presence of NaN values.
     """
     std_values = df.apply(lambda row: np.nanstd(row), axis=1)
-    std_values[std_values == 0] = 1  # Replace zero standard deviations with 1 to avoid division by zero
+    std_values[
+        std_values == 0] = 1
+    # Replace zero standard deviations with 1 to avoid division by zero
     result = df.div(std_values, axis=0)
     return result
 
 
-def concatenate_dataframes(df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame) -> pd.DataFrame:
+def concatenate_dataframes(df1: pd.DataFrame, df2: pd.DataFrame,
+                           df3: pd.DataFrame) -> pd.DataFrame:
     """
     Concatenate df2 and df2 to df1 ; fill the missing values with np.nan
     """
@@ -62,42 +68,54 @@ def concatenate_dataframes(df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFra
     assert set(df3.columns).issubset(set(df1.columns))
     df2 = df2.reindex(columns=df1.columns, fill_value=np.nan)
     df3 = df3.reindex(columns=df1.columns, fill_value=np.nan)
-    # please leave ignore_index as False: otherwise numbers and not metabolites appear in .csv exported results:
+    # please leave ignore_index as False:
+    # otherwise numbers and not metabolites appear in .csv exported results:
     result = pd.concat([df1, df2, df3], ignore_index=False)
     return result
 
 
-def split_rows_by_threshold(df: pd.DataFrame, column_name: str, threshold: float) -> (pd.DataFrame, pd.DataFrame):
+def split_rows_by_threshold(df: pd.DataFrame, column_name: str,
+                            threshold: float) -> (pd.DataFrame, pd.DataFrame):
     """
-    Splits the dataframe into rows having column_name value >= threshold and the rest
+    Splits the dataframe into rows having column_name value >= threshold and
+     the rest
     Returns two dataframes
     """
+    message = "Error in split_rows_by_threshold \
+    check qualityDistanceOverSpan parameter in the analysis YAML file"
+
     try:
         good_df = df.loc[df[column_name] >= threshold, :]
         undesired_rows = set(df.index) - set(good_df.index)
         bad_df = df.loc[list(undesired_rows)]
     except Exception as e:
         logger.info(e)
-        logger.info("Error in split_rows_by_threshold", " check qualityDistanceOverSpan parameter in the analysis YAML file")
+        logger.info(message)
 
     return good_df, bad_df
 
 
-def calculate_gmean(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
+def calculate_gmean(df: pd.DataFrame,
+                    groups: List[List[str]]) -> pd.DataFrame:
     """
-    Calculates the geometric mean for each row in the specified column groups and adds the corresponding values
-    as new columns to the DataFrame. Additionally, adds a column with the ratio of the two geometric means.
-    Takes care of the potential division by zero error by replacing 0 by 1e-10 in division
+    Calculates the geometric mean for each row in the specified
+     column groups and adds the corresponding values
+    as new columns to the DataFrame. Additionally, adds a column
+    with the ratio of the two geometric means.
+    Takes care of the potential division by zero error
+    by replacing 0 by 1e-10 in division
 
     groups: A list with two sublists containing column names from df.
 
     Returns:
-        The modified DataFrame with additional columns for the calculated geometric means
+        The modified DataFrame with additional columns for the calculated
+        geometric means
         and the ratio of means (FC - Fold Change).
     """
     for i, group in enumerate(groups):
         gmean_col = f"gmean_{i + 1}"
-        df[gmean_col] = df[group].apply(lambda x: stats.gmean(x.dropna()), axis=1)
+        df[gmean_col] = df[group].apply(lambda x: stats.gmean(x.dropna()),
+                                        axis=1)
 
     ratio_col = "FC"
     mask = df[f"gmean_{2}"] == 0
@@ -106,11 +124,15 @@ def calculate_gmean(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
     return df
 
 
-def apply_multi_group_kruskal_wallis(df: pd.DataFrame, groups: List[List[str]]) -> pd.DataFrame:
+def apply_multi_group_kruskal_wallis(df: pd.DataFrame,
+                                     groups: List[List[str]]) -> pd.DataFrame:
     '''
-    Row-wise multi-group Kruskal-Wallis test; groups contains sublists of columns
-    Applies scipy Kruskal-Wallis test to each row for groups defined by columns in 'groups',
-    adds the resulting pvalue to a new column and returns the updated data frame
+    Row-wise multi-group Kruskal-Wallis test;
+    groups contains sublists of columns
+    Applies scipy Kruskal-Wallis test to each row
+    for groups defined by columns in 'groups',
+    adds the resulting pvalue to a new column
+    and returns the updated data frame
     '''
     p_values = []
     for _, row in df.iterrows():
@@ -125,15 +147,19 @@ def apply_multi_group_kruskal_wallis(df: pd.DataFrame, groups: List[List[str]]) 
     return df
 
 
-def first_column_for_column_values(df: pd.DataFrame, columns: List, values: List) -> List:
+def first_column_for_column_values(df: pd.DataFrame, columns: List,
+                                   values: List) -> List:
     """
-    Given a dataframe df and selection columns, selects rows where values are equal to the those
-     in the "values" List (provided in pairwise fashion).
+    Given a dataframe df and selection columns, selects rows
+    where values are equal to the those
+    in the "values" List (provided in pairwise fashion).
     Returns: list of values of the first column for selected rows.
     """
 
     if not all(len(sublist) == len(columns) for sublist in values):
-        raise ValueError("Number of values in each sublist must be the same as number of columns")
+        raise ValueError(
+            "Number of values in each sublist must be"
+            " the same as number of columns")
 
     # Create a mask for each column-value pair
     first_column_values_list = []
@@ -148,50 +174,34 @@ def first_column_for_column_values(df: pd.DataFrame, columns: List, values: List
     return first_column_values_list
 
 
-def zero_repl_arg(how: str) -> Dict:  # TODO: this has to be cleaned up
+# the name of the function is preserved but strong cleaning was performed:
+#  the weird function for zero replacement no longer exists
+def arg_repl_zero2value(how: str, df: pd.DataFrame) -> float:
     """
-    zero_repl_arg is a string representing the argument for replacing zero values (e.g. "min/2").
-    The result is a dictionary of replacement arguments.
-    """
+       how: string indicating how replacing zero values (e.g. "min/2")
+       The result is a float
+       """
     how = how.lower()
     err_msg = "replace_zero_with argument is not correctly formatted"
     if how.startswith("min"):
         if how == "min":
-            n = int(1)  # n is the denominator, default is 1
+            denominator = int(1)  # n is the denominator, default is 1
         else:
             try:
-                n = float(str(how.split("/")[1]))
+                denominator = float(str(how.split("/")[1]))
             except Exception as e:
                 logger.info(e)
                 raise ValueError(err_msg)
-
-        def foo(x, n):  # TODO: needs cleanup
-            return min(x) / n
-
+        min_value = df[df > 0].min(skipna=True).min(skipna=True)
+        output_value = min_value / denominator
     else:
         try:
-            n = float(str(how))
+            output_value = float(str(how))
         except Exception as e:
             logger.info(e)
             raise ValueError(err_msg)
 
-        def foo(x, n):  # TODO: cleanup
-            return n
-
-    return {"repZero": foo, "n": n}
-
-
-def arg_repl_zero2value(argum_zero_rep: str, df: pd.DataFrame) -> float:
-    """
-    Applies the repZero function to the DataFrame df where the values are greater than 0.
-    This filters df to include only values greater than 0 and applies the repZero function element-wise.
-    WARNING: only authorised values are (min | min/n | VALUE) (default: min)
-    """
-    d = zero_repl_arg(argum_zero_rep)
-    repZero = d["repZero"]  # argum_zero_rep['repZero']
-    n = d["n"]  # argum_zero_rep['n']
-    replacement = repZero(df[df > 0].apply(repZero, n=1), n=n)
-    return replacement
+    return output_value
 
 
 def overlap_symmetric(x: np.array, y: np.array) -> float:
@@ -211,7 +221,8 @@ def overlap_asymmetric(x: np.array, y: np.array) -> float:
     return overlap
 
 
-def compute_distance_between_intervals(group1: np.array, group2: np.array, overlap_method: str) -> float:
+def compute_distance_between_intervals(group1: np.array, group2: np.array,
+                                       overlap_method: str) -> float:
     """
     computes the distance between intervals provided in group1 and group2
     """
@@ -223,13 +234,15 @@ def compute_distance_between_intervals(group1: np.array, group2: np.array, overl
         return overlap_asymmetric(group1, group2)
 
 
-def df_to_dict_by_compartment(df: pd.DataFrame, metadata: pd.DataFrame) -> dict:
+def df_to_dict_by_compartment(df: pd.DataFrame,
+                              metadata: pd.DataFrame) -> dict:
     """
     splits df into a dictionary of dataframes, each for one compartment
     """
     output_dict = dict()
     for compartment in metadata["short_comp"].unique():
-        sample_names = metadata[metadata["short_comp"] == compartment]["original_name"]
+        sample_names = metadata[metadata["short_comp"] == compartment][
+            "original_name"]
         compartment_df = df[list(sample_names)]
         output_dict[compartment] = compartment_df
     return output_dict
@@ -249,11 +262,6 @@ def check_dict_has_known_values(d: dict, possible_values: list) -> np.array:
     return np.array(known_val)
 
 
-def detect_and_create_dir(namenesteddir):  # TODO : replace by os.makedirs(file_name, exist_ok = True)
-    if not os.path.exists(namenesteddir):
-        os.makedirs(namenesteddir)
-
-
 def verify_metadata_sample_not_duplicated(metadata_df: pd.DataFrame) -> None:
     '''
     checks for duplicated sample names in a metadata DataFrame and raises an
@@ -266,11 +274,14 @@ def verify_metadata_sample_not_duplicated(metadata_df: pd.DataFrame) -> None:
         txt_errors = f"-> duplicated sample names: {duplicated_samples}\n"
         raise ValueError(f"Found conflicts in your metadata:\n{txt_errors}")
 
+
 def a12(lst1, lst2, rev=True):
     """
-    Non-parametric hypothesis testing using Vargha and Delaney's A12 statistic:
+    Non-parametric hypothesis testing using Vargha and Delaney's
+    A12 statistic:
     how often is x in lst1 greater than y in lst2?
-    == > it gives a size effect, good to highlight potentially real effects <==
+    == > it gives a size effect, good to highlight
+    potentially real effects <==
     """
     # credits : Macha Nikolski
     more = same = 0.0
@@ -285,39 +296,6 @@ def a12(lst1, lst2, rev=True):
     return (more + 0.5 * same) / (len(lst1) * len(lst2))
 
 
-def compute_reduction(df, ddof):
-    """
-    modified, original from ProteomiX
-    johaGL 2023:
-    - if all row is zeroes, set same protein_values
-    - if nanstd(array, ddof) equals 0, set same protein_values
-    (example: nanstd([0.1,nan,0.1,0.1,0.1,nan])
-    """
-    res = df.copy()
-    for protein in df.index.values:
-        # get array with abundances values
-        protein_values = np.array(df.iloc[protein].map(lambda x: locale.atof(x) if type(x) == str else x))
-        # return array with each value divided by standard deviation, row-wise
-        if (np.nanstd(protein_values, ddof=ddof) == 0) or (sum(protein_values) == 0):
-            reduced_abundances = protein_values
-        else:
-            reduced_abundances = protein_values / np.nanstd(protein_values, ddof=ddof)
-
-        # replace values in result df
-        res.loc[protein] = reduced_abundances
-    return res
-
-
-def compute_cv(reduced_abund):
-    reduced_abu_np = reduced_abund.to_numpy().astype("float64")
-    if np.nanmean(reduced_abu_np) != 0:
-        return np.nanstd(reduced_abu_np) / np.nanmean(reduced_abu_np)
-    elif np.nanmean(reduced_abu_np) == 0 and np.nanstd(reduced_abu_np) == 0:
-        return 0
-    else:
-        return np.nan
-
-
 def compute_gmean_nonan(anarray: np.array) -> float:
     arr_nonzero = np.where(anarray == 0, np.finfo(float).eps, anarray)
     return stats.gmean(arr_nonzero[~np.isnan(arr_nonzero)])
@@ -325,8 +303,9 @@ def compute_gmean_nonan(anarray: np.array) -> float:
 
 def countnan_samples(df: pd.DataFrame, groups: List) -> pd.DataFrame:
     """
-    Calculates the count of NaN values in each row of the DataFrame and for each
-    group within the specified columns, and adds two new columns to the DataFrame with the counts.
+    Calculates the count of NaN values in each row of the DataFrame
+    and for each group within the specified columns,
+    and adds two new columns to the DataFrame with the counts.
 
     Only works if groups contains two sublists of column names
     """
@@ -366,8 +345,10 @@ def compute_ranksums_allH0(vInterest: np.array, vBaseline: np.array):
     vInterest = vInterest[~np.isnan(vInterest)]
     vBaseline = vBaseline[~np.isnan(vBaseline)]
     sta, p = scipy.stats.ranksums(vInterest, vBaseline, alternative="less")
-    sta2, p2 = scipy.stats.ranksums(vInterest, vBaseline, alternative="greater")
-    sta3, p3 = scipy.stats.ranksums(vInterest, vBaseline, alternative="two-sided")
+    sta2, p2 = scipy.stats.ranksums(vInterest, vBaseline,
+                                    alternative="greater")
+    sta3, p3 = scipy.stats.ranksums(vInterest, vBaseline,
+                                    alternative="two-sided")
 
     # best (smaller pvalue) among all tailed tests
     pretups = [(sta, p), (sta2, p2), (sta3, p3)]
@@ -391,8 +372,10 @@ def compute_wilcoxon_allH0(vInterest: np.array, vBaseline: np.array):
     vInterest = vInterest[~np.isnan(vInterest)]
     vBaseline = vBaseline[~np.isnan(vBaseline)]
     sta, p = scipy.stats.wilcoxon(vInterest, vBaseline, alternative="less")
-    sta2, p2 = scipy.stats.wilcoxon(vInterest, vBaseline, alternative="greater")
-    sta3, p3 = scipy.stats.wilcoxon(vInterest, vBaseline, alternative="two-sided")
+    sta2, p2 = scipy.stats.wilcoxon(vInterest, vBaseline,
+                                    alternative="greater")
+    sta3, p3 = scipy.stats.wilcoxon(vInterest, vBaseline,
+                                    alternative="two-sided")
 
     # best (smaller pvalue) among all tailed tests
     pretups = [(sta, p), (sta2, p2), (sta3, p3)]
@@ -414,9 +397,12 @@ def compute_wilcoxon_allH0(vInterest: np.array, vBaseline: np.array):
 def compute_brunnermunzel_allH0(vInterest: np.array, vBaseline: np.array):
     vInterest = vInterest[~np.isnan(vInterest)]
     vBaseline = vBaseline[~np.isnan(vBaseline)]
-    sta, p = scipy.stats.brunnermunzel(vInterest, vBaseline, alternative="less")
-    sta2, p2 = scipy.stats.brunnermunzel(vInterest, vBaseline, alternative="greater")
-    sta3, p3 = scipy.stats.brunnermunzel(vInterest, vBaseline, alternative="two-sided")
+    sta, p = scipy.stats.brunnermunzel(vInterest, vBaseline,
+                                       alternative="less")
+    sta2, p2 = scipy.stats.brunnermunzel(vInterest, vBaseline,
+                                         alternative="greater")
+    sta3, p3 = scipy.stats.brunnermunzel(vInterest, vBaseline,
+                                         alternative="two-sided")
 
     # best (smaller pvalue) among all tailed tests
     pretups = [(sta, p), (sta2, p2), (sta3, p3)]
@@ -442,16 +428,18 @@ def absolute_geommean_diff(b_values: np.array, a_values: np.array):
     return diff_absolute
 
 
-def drop_all_nan_metabolites_on_comp_frames(frames_dict: Dict, metadata: pd.DataFrame) -> Dict:
+def drop_all_nan_metabolites_on_comp_frames(frames_dict: Dict,
+                                            metadata: pd.DataFrame) -> Dict:
     """ metabolites must be in rows """
     compartments = metadata["short_comp"].unique().tolist()
     for dataset in frames_dict.keys():
         for compartment in compartments:
             tmp = frames_dict[dataset][compartment]
-            tmp.dropna(how="all", subset=tmp.columns.difference(["ID"]), axis=0)
-            #tmp = tmp.dropna(how="all", axis=0)
+            tmp.dropna(how="all", subset=tmp.columns.difference(["ID"]),
+                       axis=0)
             frames_dict[dataset][compartment] = tmp
     return frames_dict
+
 
 def set_samples_names(frames_dict: Dict, metadata: pd.DataFrame) -> Dict:
     '''
@@ -461,12 +449,14 @@ def set_samples_names(frames_dict: Dict, metadata: pd.DataFrame) -> Dict:
     '''
     for dataset, compartments_dict in frames_dict.items():
         for compartment, df in compartments_dict.items():
-            original_names = metadata[metadata["short_comp"] == compartment]["original_name"]
-            new_names = metadata[metadata["short_comp"] == compartment]["name_to_plot"]
-            renamed_columns = {old: new for old, new in zip(original_names, new_names)
+            original_names = metadata[metadata["short_comp"] == compartment][
+                "original_name"]
+            new_names = metadata[metadata["short_comp"] == compartment][
+                "name_to_plot"]
+            renamed_columns = {old: new for old, new in
+                               zip(original_names, new_names)
                                if old != "ID"}
             renamed_df = df.rename(columns=renamed_columns)
             frames_dict[dataset][compartment] = renamed_df
 
     return frames_dict
-

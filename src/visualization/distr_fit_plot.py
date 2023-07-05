@@ -137,7 +137,8 @@ def run_dist_fit_plot_pairwise(
     df4c = helpers.countnan_samples(df4c, this_comparison)
 
     df4c = helpers.calculate_gmean(df4c, this_comparison)
-    df_good, df_bad = select_rows_with_sufficient_non_nan_values(df4c)
+    df_good, df_bad = select_rows_with_sufficient_non_nan_values(
+        df4c, groups=this_comparison)
 
     df_good = fit_statistical_distribution.compute_z_score(df_good, "FC")
 
