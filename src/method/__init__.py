@@ -45,8 +45,9 @@ class AbundancePlotConfig(MethodConfig):
     barcolor: str = "timepoint"
     axisx: str = "condition"
     axisx_labeltilt: int = 20  # 0 is no tilt
-    width_each_subfig: int = 3 # TODO: must be float
-    wspace_subfigs: int = 1 # TODO : must be float
+    width_each_subfig: float = 3
+    height_each_subfig: float = 5.4
+    as_grid: Union[bool, None] = False
 
     def build(self) -> "AbundancePlot":
         return AbundancePlot(config=self)
@@ -165,10 +166,14 @@ class AbundancePlot(Method):
     def run(self, cfg: DictConfig, dataset: Dataset) -> None:
         logger.info("Will plot the abundance plot, with the following config: %s", self.config)
         if not ("metabolites" in cfg.analysis.keys()):  # plotting for _all_ metabolites
-            logger.warning("No selected metabolites provided, plotting for all; might result in ugly too wide plots")
+            logger.warning("No selected metabolites provided, plotting for all")
             with open_dict(cfg):
+                cfg.analysis["metabolites"] = {}
                 for c in set(dataset.metadata_df["short_comp"]):
-                    cfg.analysis["metabolites"] = {c: dataset.abundances_df.index.to_list()}
+                    metabolites_compartment = \
+                        dataset.compartmentalized_dfs[
+                            'abundances'][c].index.to_list()
+                    cfg.analysis["metabolites"][c] = metabolites_compartment
 
         self.check_expectations(cfg, dataset)
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
@@ -291,7 +296,7 @@ class IsotopologueProportionsPlot(Method):
             with open_dict(cfg):
                 compartments = list(set(dataset.metadata_df["short_comp"]))
                 for c in compartments:
-                    isotopologues_names = list(dataset.isotopologues_proportions_df.index.to_list())
+                    isotopologues_names = list(dataset.isotopologues_proportions_df.index.to_list())  # TODO: make it per compartmentalized df
                     metabolites = set(
                         [i.split("_m+")[0] for i in isotopologues_names]
                         )
@@ -346,7 +351,7 @@ class MeanEnrichmentLinePlot(Method):
                 cfg.analysis["metabolites"] = {}
                 for c in set(dataset.metadata_df["short_comp"]):
                     cfg.analysis["metabolites"][c] = \
-                          dataset.mean_enrichment_df.index.to_list()
+                          dataset.mean_enrichment_df.index.to_list()  # TODO: make it per compartmentalized df
 
         self.check_expectations(cfg, dataset)
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
