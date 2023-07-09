@@ -6,8 +6,6 @@ name: Generate abundance plots
 barcolor : condition
 axisx : timepoint
 axisx_labeltilt : 70 # 0 is no tilt
-
-width_each_subfig : 3
 height_each_subfig: !!float 5.5
 palette: 'pastel'
 

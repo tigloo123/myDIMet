@@ -209,7 +209,7 @@ def run_plot_abundance_bars(dataset: Dataset, out_plot_dir,
     axisx_var = cfg.analysis.method.axisx
     hue_var = cfg.analysis.method.barcolor
 
-    width_each_subfig = cfg.analysis.method.width_each_subfig
+    width_each_subfig = cfg.analysis.width_each_subfig
     height_each_subfig = cfg.analysis.method.height_each_subfig
 
     compartments = set(metadata_df["short_comp"])

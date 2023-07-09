@@ -7,7 +7,8 @@ name: Generate isotopologues stack plots
 max_nb_carbons_possible: 12
 appearance_separated_time: True # adds a space between timepoints, conditions stay comparative
 split_plots_by_condition: False # prints each condition in independent plots
-plots_height: !!float 4.8
+height_each_stack: !!float 4.9
 sharey: False # share y axis across subplots
 x_ticks_text_size: 18
 y_ticks_text_size: 19
+as_grid: False

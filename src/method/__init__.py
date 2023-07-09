@@ -45,7 +45,6 @@ class AbundancePlotConfig(MethodConfig):
     barcolor: str = "timepoint"
     axisx: str = "condition"
     axisx_labeltilt: int = 20  # 0 is no tilt
-    width_each_subfig: float = 3
     height_each_subfig: float = 5.4
     as_grid: Union[bool, None] = False
 
@@ -87,10 +86,11 @@ class IsotopologueProportionsPlotConfig(MethodConfig):
     max_nb_carbons_possible: int = 24
     appearance_separated_time: bool = True
     separated_plots_by_condition: bool = False
-    plots_height: float = 4.8
-    sharey: bool =  False  # share y axis across subplots
+    height_each_stack: float = 4.9
+    sharey: bool = False  # share y axis across subplots
     x_ticks_text_size: int = 18
     y_ticks_text_size: int = 19
+    as_grid: Union[bool, None] = False
 
     def build(self) -> "IsotopologueProportionsPlot":
         return IsotopologueProportionsPlot(config=self)
@@ -191,6 +191,15 @@ class AbundancePlot(Method):
                 raise ValueError(
                     f"[Analysis > Timepoints] time points provided in the config file are not present in [Metadata > timepoint]"
                 )
+            if cfg.analysis.width_each_subfig is not None:
+                try:
+                    float(cfg.analysis.width_each_subfig)
+                except TypeError:
+                    logger.error(f"Unrecognized value for width_each_subfig"
+                                 f" in the config file")
+                assert cfg.analysis.width_each_subfig >= 0, logger.error(
+                    "width_each_subfig must be a positive number"
+                )
         except ConfigAttributeError as e:
             logger.error(f"Mandatory parameter not provided in the config file:{e}, aborting")
             sys.exit(1)
@@ -287,20 +296,26 @@ class IsotopologueProportionsPlot(Method):
     config: IsotopologueProportionsPlotConfig
 
     def run(self, cfg: DictConfig, dataset: Dataset) -> None:
-        logger.info("Will perform isotopologue proportions stacked-bar plots, with the following config: %s", self.config)  
+        logger.info(
+            "Will perform isotopologue proportions stacked-bar plots, "
+            "with the following config: %s", self.config)
 
         if not (
-                "metabolites" in cfg.analysis.keys()):  # plotting for _all_ metabolites
+                "metabolites" in cfg.analysis.keys()):
+            # plotting for _all_ metabolites
             logger.warning(
-                "No selected metabolites provided, plotting for all may fail")
+                "No selected metabolites provided, plotting for all")
             with open_dict(cfg):
                 compartments = list(set(dataset.metadata_df["short_comp"]))
+                cfg.analysis["metabolites"] = dict()
                 for c in compartments:
-                    isotopologues_names = list(dataset.isotopologues_proportions_df.index.to_list())  # TODO: make it per compartmentalized df
-                    metabolites = set(
+                    isotopologues_names = \
+                        dataset.compartmentalized_dfs[
+                            "isotopologue_proportions"][c].index.to_list()
+                    metabolites_c = set(
                         [i.split("_m+")[0] for i in isotopologues_names]
-                        )
-                    cfg.analysis["metabolites"] = {c: list(metabolites)}
+                    )
+                    cfg.analysis["metabolites"][c] = list(metabolites_c)
 
         self.check_expectations(cfg, dataset)
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
@@ -309,30 +324,40 @@ class IsotopologueProportionsPlot(Method):
 
     def check_expectations(self, cfg: DictConfig, dataset: Dataset) -> None:
         try:
-            if not set(cfg.analysis.metabolites.keys()).issubset(dataset.metadata_df['short_comp']):
+            if not set(cfg.analysis.metabolites.keys()).issubset(
+                    dataset.metadata_df['short_comp']):
                 raise ValueError(
-                    f"[Analysis > Metabolites > compartments] are missing from [Metadata > Compartments]"
+                    f"[Analysis > Metabolites > compartments] "
+                    f"are missing from [Metadata > Compartments]"
                 )
             if not set(cfg.analysis.timepoints).issubset(
                     set(dataset.metadata_df["timepoint"])):
                 raise ValueError(
-                    f"[Analysis > Timepoints] time points provided in the config file are not present in [Metadata > timepoint]"
+                    f"[Analysis > Timepoints] time points provided in the "
+                    f"config file are not present in [Metadata > timepoint]"
                 )
-            if not cfg.analysis.width_each_stack > float(0):
-                raise ValueError(
-                    f"[Analysis > width_each_stack] must be superior to 0"
+            if cfg.analysis.width_each_stack is not None:
+                try:
+                    float(cfg.analysis.width_each_stack)
+                except TypeError:
+                    logger.error(f"Unrecognized value for width_each_stack"
+                                 f" in the config file")
+                assert cfg.analysis.width_each_stack >= 0, logger.error(
+                    "width_each_stack must be a positive number"
                 )
-            if not cfg.analysis.wspace_stacks > float(0):
-                raise ValueError(
-                    f"[Analysis > wspace_stacks] must be superior to 0"
-                )
-            if not cfg.analysis.inner_numbers_size >= 0:
-                raise ValueError(
-                    f"[Analysis > wspace_stacks] must be greater or equal to 0"
+            if cfg.analysis.inner_numbers_size is not None:
+                try:
+                    float(cfg.analysis.inner_numbers_size)
+                except TypeError:
+                    logger.error(f"Unrecognized value for inner_numbers_size"
+                                 f" in the config file")
+                assert cfg.analysis.inner_numbers_size >= 0, logger.error(
+                    "inner_numbers_size must be a positive number"
                 )
         except ConfigAttributeError as e:
             logger.error(
-                f"Mandatory parameter not provided in the config file:{e}, aborting")
+                f"Mandatory parameter not provided in the config file:"
+                f"{e}, aborting")
             sys.exit(1)
         except ValueError as e:
             logger.error(f"Data inconsistency: {e}")
@@ -346,7 +371,7 @@ class MeanEnrichmentLinePlot(Method):
         logger.info("Will perform Mean Enrichment (syn. Fractional Contributions) line-plot with the following config: %s", self.config)
         if not("metabolites" in cfg.analysis.keys()):
             logger.warning(
-                "No selected metabolites provided, plotting for all; might result in ugly too wide plots")
+                "No selected metabolites provided, plotting for all; might result in ugly too wide plots")  # TODO: make new  independent plot by metabolite to avoid this
             with open_dict(cfg):
                 cfg.analysis["metabolites"] = {}
                 for c in set(dataset.metadata_df["short_comp"]):
