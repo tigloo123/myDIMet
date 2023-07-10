@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import os
 import sys
 
@@ -105,6 +105,8 @@ class MeanEnrichmentLinePlotConfig(MethodConfig):
     color_lines_by: str = "condition"  # or  "metabolite"
     palette_condition: str = "paired"  # seaborn/matplotlib pals
     palette_metabolite: str = "auto_multi_color"  # or .csv path
+    height_subplot: float = 4.3
+    as_grid: Union[bool, None] = False
 
     def build(self) -> "MeanEnrichmentLinePlot":
         return MeanEnrichmentLinePlot(config=self)
@@ -368,15 +370,18 @@ class MeanEnrichmentLinePlot(Method):
     config: MeanEnrichmentLinePlotConfig
 
     def run(self, cfg: DictConfig, dataset: Dataset) -> None:
-        logger.info("Will perform Mean Enrichment (syn. Fractional Contributions) line-plot with the following config: %s", self.config)
+        logger.info("Will perform Mean Enrichment (syn. Fractional "
+                    "Contributions) line-plot "
+                    "with the following config: %s", self.config)
         if not("metabolites" in cfg.analysis.keys()):
             logger.warning(
-                "No selected metabolites provided, plotting for all; might result in ugly too wide plots")  # TODO: make new  independent plot by metabolite to avoid this
+                "No selected metabolites provided, plotting for all")
             with open_dict(cfg):
                 cfg.analysis["metabolites"] = {}
                 for c in set(dataset.metadata_df["short_comp"]):
                     cfg.analysis["metabolites"][c] = \
-                          dataset.mean_enrichment_df.index.to_list()  # TODO: make it per compartmentalized df
+                          dataset.compartmentalized_dfs[
+                              'mean_enrichment'][c].index.to_list()
 
         self.check_expectations(cfg, dataset)
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
@@ -388,15 +393,28 @@ class MeanEnrichmentLinePlot(Method):
             if not set(cfg.analysis.metabolites.keys()).issubset(
                     dataset.metadata_df['short_comp']):
                 raise ValueError(
-                    f"[Analysis > Metabolites > compartments] are missing from [Metadata > Compartments]"
+                    f"[Analysis > Metabolites > compartments] are missing "
+                    f"from [Metadata > Compartments]"
                 )
-            if not cfg.analysis.method.color_lines_by in ["metabolite", "condition"]:
+            if cfg.analysis.method.color_lines_by not \
+                    in ["metabolite", "condition"]:
                 raise ValueError(
-                    f"[config > analysis > method > color_lines_by] must be metabolite or condition"
+                    f"[config > analysis > method > color_lines_by] "
+                    f"must be metabolite or condition"
+                )
+            if cfg.analysis.width_subplot is not None:
+                try:
+                    float(cfg.analysis.width_subplot)
+                except TypeError:
+                    logger.error(f"Unrecognized value for width_subplot"
+                                 f" in the config file")
+                assert cfg.analysis.width_subplot >= 0, logger.error(
+                    "width_subplot must be a positive number"
                 )
         except ConfigAttributeError as e:
             logger.error(
-                f"Mandatory parameter not provided in the config file: {e}, aborting"
+                f"Mandatory parameter not provided "
+                f"in the config file: {e}, aborting"
             )
             sys.exit(1)
         except ValueError as e:
@@ -438,7 +456,8 @@ class PcaAnalysis(Method):
                 )
         except ConfigAttributeError as e:
             logger.error(
-                f"Mandatory parameter not provided in the config file: {e}, aborting"
+                f"Mandatory parameter not provided "
+                f"in the config file: {e}, aborting"
             )
             sys.exit(1)
         except ValueError as e:

@@ -8,6 +8,6 @@ palette_condition: muted # seaborn/matplotlib palette. Has effect if color_lines
 palette_metabolite: auto_multi_color # auto_multi_color|PATH_TO_COLOR.csv.  Has effect if color_lines_by metabolite
 xaxis_title: Time # Days|Hours|Minutes|Seconds|Time ...
 alpha: 1  # 0 for transparent, 1 max intensity
-plot_grouped_by_dict : null # cell : 0 : [Cit, Iso-cit ] will display both in same first plot area
-width_subplot : !!float 6.2
-height_plot_pdf: !!float 11
+plot_grouped_by_dict : null # cell : 0 : [Cit, Iso-cit] will display both in same plane
+height_subplot: !!float 4.8
+as_grid : False

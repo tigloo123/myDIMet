@@ -435,7 +435,7 @@ def drop_all_nan_metabolites_on_comp_frames(frames_dict: Dict,
     for dataset in frames_dict.keys():
         for compartment in compartments:
             tmp = frames_dict[dataset][compartment]
-            tmp.dropna(how="all", subset=tmp.columns.difference(["ID"]),
+            tmp = tmp.dropna(how="all", subset=tmp.columns.difference(["ID"]),
                        axis=0)
             frames_dict[dataset][compartment] = tmp
     return frames_dict
