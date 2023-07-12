@@ -52,3 +52,12 @@ comparison_modes_types = Literal["pairwise", "multigroup"]  # TODO: verify if ev
 overlap_methods = ["symmetric", "asymmetric"]
 
 overlap_methods_types = Literal["symmetric", "asymmetric"]
+
+data_types_suitable_for_metabologram = ['abundances', 'mean_enrichment']
+
+molecular_types_for_metabologram = ["transcripts", "metabolites"]
+
+columns_transcripts_config_keys = ['ID', 'values']
+
+metabolites_values_for_metabologram = ['log2FC', 'FC']
+
