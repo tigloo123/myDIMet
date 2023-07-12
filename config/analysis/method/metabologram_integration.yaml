@@ -1,0 +1,25 @@
+_target_: method.MetabologramIntegrationConfig
+
+label: metabologram
+name: Perform data integration via metabologram visualization
+
+grouping :
+  - condition
+  - timepoint
+
+qualityDistanceOverSpan : -0.3
+correction_method : "bonferroni"
+
+impute_values:
+  abundances: "min"
+  mean_enrichment: "min"
+  isotopologues: "min"
+  isotopologue_proportions: "min"
+
+# only abundances or mean_enrichment accepted, set in user config
+statistical_test:
+  abundances: KW
+  mean_enrichment: KW
+
+desired_metrics : 'LogFC' # LogFC|FC supported to date
+

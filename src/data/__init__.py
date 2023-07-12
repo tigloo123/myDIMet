@@ -5,7 +5,7 @@ from typing import Optional, List, Literal, Set, Dict
 
 import pandas as pd
 from hydra.core.hydra_config import HydraConfig
-from omegaconf import ListConfig
+from omegaconf import ListConfig, DictConfig
 from pydantic import BaseModel as PydanticBaseModel
 
 import helpers
@@ -104,16 +104,21 @@ class Dataset(BaseModel):
         # log the first 5 rows of the metadata
         logger.info("Loaded metadata: \n%s", self.metadata_df.head())
         logger.info(
-            "Finished loading raw dataset %s, available dataframes are : %s", self.config.label, self.available_datasets
+            "Finished loading raw dataset %s, available dataframes are : %s",
+            self.config.label, self.available_datasets
         )
         self.check_expectations()
 
     def check_expectations(self):
         # conditions should be a subset of the metadata corresponding column
-        if not set(self.config.conditions).issubset(set(self.metadata_df["condition"].unique())):
-            logger.error("Conditions %s are not a subset of the metadata declared conditions", self.config.conditions)
+        if not set(self.config.conditions).issubset(
+                set(self.metadata_df["condition"].unique())):
+            logger.error("Conditions %s are not a subset of "
+                         "the metadata declared conditions",
+                         self.config.conditions)
             raise ValueError(
-                f"Conditions {self.config.conditions} are not a subset of the metadata declared conditions"
+                f"Conditions {self.config.conditions} are not a subset "
+                f"of the metadata declared conditions"
             )
 
         helpers.verify_metadata_sample_not_duplicated(self.metadata_df)
@@ -141,7 +146,6 @@ class Dataset(BaseModel):
                 df.to_csv(os.path.join(out_data_path, output_file_name), sep="\t", header=True, index=False)
                 logger.info(f"Saved the {compartment} compartment version of {file_name} in {out_data_path}")
 
-
     def get_file_for_label(self, label):
         if label == "abundances":
             return self.config.abundances
@@ -154,4 +158,83 @@ class Dataset(BaseModel):
         else:
             raise ValueError(f"Unknown label {label}")
 
-   
+
+class DataIntegrationConfig(DatasetConfig):
+    transcripts: ListConfig
+    pathways: DictConfig
+
+
+class DataIntegration(Dataset):
+    config: DataIntegrationConfig
+    integration_files_folder_absolute: str = None  # absolute path directory
+    deg_dfs: Dict[int, pd.DataFrame] = {}
+    pathways_dfs: Dict[str, pd.DataFrame] = {}
+
+    def set_dataset_integration_config(self):
+        self.preload()
+        self.split_datafiles_by_compartment()
+        self.save_datafiles_split_by_compartment()
+
+        self.integration_files_folder_absolute = os.path.join(
+            self.sub_folder_absolute, "integration_files")
+
+        self.check_expectations()  # of the Dataset class
+        self.check_expectations_integration_data()  # of this child class
+
+    def check_expectations_integration_data(self):
+        if not len(set(self.config.transcripts)) == \
+                len(self.config.transcripts):
+            logger.error(
+                f"Duplicated names: {self.config.transcripts}"
+                f" in transcripts")
+            raise ValueError(
+                f"Duplicated names: {self.config.transcripts}"
+                f" in transcripts")
+
+        if not len(set(['metabolites', 'transcripts']).difference(
+            set(self.config.pathways.keys())
+        )) == 0:
+            logger.error("Unrecognized pathways configuration"
+                         " in dataset yaml file")
+            raise ValueError(
+                "Unrecognized pathways_file_names configuration"
+                " in dataset yaml file"
+            )
+
+    def load_deg_dfs(self):
+        # generate dictionary of transcripts dataframes (DEGs) :
+        # the keys are integers, with the order of files in the dataset yml
+        for i, file_name in enumerate(self.config.transcripts):
+            try:
+                path_deg_file = os.path.join(
+                    self.integration_files_folder_absolute,
+                    f"{file_name}.csv")
+                deg_df = pd.read_csv(path_deg_file, sep='\t', header=0)
+                self.deg_dfs[i] = deg_df
+            except FileNotFoundError:
+                logger.info(f"{file_name}.csv: file not found")
+            except Exception as e:
+                logger.info(f'Error while opening file {file_name}.csv {e}')
+
+        logger.info("Finished loading transcripts dataframes: "
+                    "%s", self.config.transcripts)
+
+    def load_pathways_dfs(self):
+        for k in self.config.pathways.keys():
+            try:
+                path_file = os.path.join(
+                        self.integration_files_folder_absolute,
+                        f"{self.config.pathways[k]}.csv")
+                pathway_df = pd.read_csv(path_file, sep='\t', header=0)
+                self.pathways_dfs[k] = pathway_df
+            except FileNotFoundError:
+                logger.info(f"{self.config.pathways[k]}.csv: file not found")
+            except Exception as e:
+                logger.info(f'Error while opening file '
+                            f'{self.config.pathways[k]}.csv {e}')
+
+        logger.info("Finished loading pathways dataframes: "
+                    "%s", self.config.pathways)
+
+
+

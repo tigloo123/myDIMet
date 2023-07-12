@@ -5,20 +5,30 @@ import sys
 from omegaconf import DictConfig, OmegaConf, ListConfig, open_dict
 from omegaconf.errors import ConfigAttributeError
 from pydantic import BaseModel as PydanticBaseModel
-from data import Dataset
+from data import Dataset, DataIntegration
 from helpers import flatten
-from processing.differential_analysis import differential_comparison, \
-    multi_group_compairson, time_course_analysis
+from processing.differential_analysis import (
+    differential_comparison,
+    multi_group_compairson,
+    time_course_analysis
+)
 from visualization.abundance_bars import run_plot_abundance_bars
-from constants import assert_literal, data_files_keys_type
+from constants import (
+    assert_literal,
+    data_files_keys_type,
+    availtest_methods,
+    columns_transcripts_config_keys,
+    metabolites_values_for_metabologram,
+    data_types_suitable_for_metabologram
+)
 from visualization.isotopologue_proportions import run_isotopologue_proportions_plot
 from visualization.mean_enrichment_line_plot import run_mean_enrichment_line_plot
 from processing.pca_analysis import run_pca_analysis
 from typing import Union
 from visualization.pca_plot import run_pca_plot
 from visualization.distr_fit_plot import run_distr_fit_plot
-
-import constants
+from visualization.metabologram import run_metabologram
+import hydra
 
 
 logger = logging.getLogger(__name__)
@@ -145,6 +155,19 @@ class DistrFitPlotConfig(MethodConfig):
 
     def build(self) -> "DistrFitPlot":
         return DistrFitPlot(config=self)
+
+
+class MetabologramIntegrationConfig(MethodConfig):
+    """
+    Sets default values or fills them from the method yaml file
+    """
+    grouping: ListConfig = ["condition", "timepoint"]
+    qualityDistanceOverSpan: float
+    correction_method: str = "bonferroni"
+    impute_values: DictConfig
+
+    def build(self) -> "MetabologramIntegration":
+        return MetabologramIntegration(config=self)
 
 
 class Method(BaseModel):
@@ -542,7 +565,7 @@ class TimeCourseAnalysis(Method):
 
         try:
             if not set(user_tests).issubset(
-                    set(constants.availtest_methods) )  :
+                    set(availtest_methods)):
                 raise ValueError(
                     f"Statistical tests provided in the config file not recognized, aborting"
                 )
@@ -605,3 +628,129 @@ class DistrFitPlot(Method):
         except ValueError as e:
             logger.error(f"Data inconsistency:{e}")
             sys.exit(1)
+
+
+class MetabologramIntegration(Method):
+    config: MetabologramIntegrationConfig
+
+    def run(self, cfg: DictConfig, dataset: Dataset) -> None:
+        logger.info(f"The current working directory is {os.getcwd()}")
+        logger.info("Current configugration is %s", OmegaConf.to_yaml(cfg))
+        logger.info("Will perform metabologram, "
+                    "with the following config: %s", self.config)
+        out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
+        os.makedirs(out_table_dir, exist_ok=True)
+        # 'data_integration' (data for integration) inherits from dataset
+        data_integration: DataIntegration = DataIntegration(
+             config=hydra.utils.instantiate(cfg.analysis.dataset))
+        data_integration.set_dataset_integration_config()
+        data_integration.load_deg_dfs()
+        data_integration.load_pathways_dfs()
+
+        self.check_expectations(cfg, data_integration)
+        out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
+        file_name = list(cfg.analysis.method.statistical_test.keys())[0]
+        test = cfg.analysis.method.statistical_test[file_name]
+
+        try:
+            #  'ID' is facultative in config 'columns_metabolites'
+            str(cfg.analysis.columns_metabolites['ID'])
+        except KeyError:
+            with open_dict(cfg):  # if not set, assign "metabolite"
+                cfg.analysis.columns_metabolites['ID'] = "metabolite"
+
+        logger.info(
+            f"Running metabologram of {data_integration.get_file_for_label(file_name)}"
+            f" (differences computed using {test} test)")
+        run_metabologram(file_name, data_integration,
+                         cfg, test, out_plot_dir=out_plot_dir)
+
+    def check_expectations(self, cfg: DictConfig,
+                           data_integration: DataIntegration) -> None:
+        # expectations proper to the metabologram,
+        # completed with those being the same of differential analysis
+        try:
+            if not isinstance(cfg.analysis.compartment, str):
+                raise ValueError("compartment must be string in config file")
+            if cfg.analysis.compartment not in \
+                    set(data_integration.metadata_df['short_comp']):
+                raise ValueError(
+                    f"the compartment '{cfg.analysis.compartment}' "
+                    f"in the config file does not exist. Must be one of: "
+                    f"{set(data_integration.metadata_df['short_comp'])}"
+                )
+            if not set(cfg.analysis.columns_transcripts.keys()) == \
+                    set(columns_transcripts_config_keys):
+                raise ValueError(
+                    f"Unrecognized 'columns_transcripts' parameters "
+                    f"{cfg.analysis.columns_transcripts.keys()}. Must be: "
+                    f"{columns_transcripts_config_keys}"
+                )
+            if not all(set(cfg.analysis.columns_transcripts.values()).issubset(
+                    set(df.columns)) for df in data_integration.deg_dfs.values()):
+                raise ValueError(
+                    f"{set(cfg.analysis.columns_transcripts.values())} absent"
+                    f" in one or more of the transcripts dataframes"
+                )
+            if 'values' not in set(cfg.analysis.columns_metabolites.keys()):
+                raise ValueError("Missing 'values' in columns_metabolites")
+            if cfg.analysis.columns_metabolites['values'] not in \
+                    metabolites_values_for_metabologram:
+                raise ValueError(
+                    f"column '{cfg.analysis.columns_metabolites['values']}'"
+                    f" in metabolites not recognized , currently supported:"
+                    f" {metabolites_values_for_metabologram}"
+                )
+            if not len(cfg.analysis.statistical_test.keys()) == 1:
+                raise ValueError(
+                    f"More than one type of data in config file: "
+                    f"{list(cfg.analysis.statistical_test.keys())}, "
+                    f"must be only one: abundances OR mean_enrichment"
+                )
+            type_of_data = list(cfg.analysis.statistical_test.keys())
+            if type_of_data[0] not in \
+                    data_types_suitable_for_metabologram:
+                raise ValueError(
+                    f"Unauthorized data types '{type_of_data[0]}' "
+                    f" in config file for the Metabologram. Must be one of: "
+                    f"{data_types_suitable_for_metabologram}"
+                )
+            if not len(cfg.analysis.comparisons) == len(data_integration.deg_dfs):
+                raise ValueError(
+                    "the number of comparisons, and the number of transcripts dataframes, are unequal"
+                )
+            if not (all(len(c) == 2 for c in cfg.analysis.comparisons)):
+                raise ValueError(
+                    f"Number of conditions has to be 2 for a pairwise comparison, see config file"
+                    )
+            if not all(any(
+                    item[0] in set(data_integration.metadata_df["condition"]) for item
+                    in sublist)
+                       for sublist in cfg.analysis.comparisons):
+                raise ValueError(
+                    f"Conditions provided for comparisons in the config file are not present in the metadata file, aborting"
+                )
+            if not all(any(
+                    item[1] in set(data_integration.metadata_df["timepoint"]) for item
+                    in sublist)
+                       for sublist in cfg.analysis.comparisons):
+                raise ValueError(
+                    f"Timepoints provided for comparisons in the config file are not present in the metadata file, aborting"
+                )
+            # all values in the comparisons arrays of arrays are in the metadata, either as conditions or timepoints
+
+            conditions_and_tp = set(data_integration.metadata_df["condition"]).union(set(data_integration.metadata_df["timepoint"]))
+
+            comparisons = set(flatten(cfg.analysis.comparisons))
+            diff = comparisons.difference(conditions_and_tp)
+            if not comparisons.issubset(conditions_and_tp):
+                raise ValueError(
+                    f"Comparisons > Conditions or timepoints provided in the config file {diff} are not present in the metadata file, aborting"
+                )
+        except ConfigAttributeError as e:
+            logger.error(f"Mandatory parameter not provided in the config file:{e}, aborting")
+            sys.exit(1)
+        except ValueError as e:
+            logger.error(f"Data inconsistency: {e}")
+            sys.exit(1)
+
