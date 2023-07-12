@@ -7,7 +7,7 @@ import pandas as pd
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import ListConfig, DictConfig
 from pydantic import BaseModel as PydanticBaseModel
-
+from constants import molecular_types_for_metabologram
 import helpers
 
 
@@ -191,7 +191,7 @@ class DataIntegration(Dataset):
                 f"Duplicated names: {self.config.transcripts}"
                 f" in transcripts")
 
-        if not len(set(['metabolites', 'transcripts']).difference(
+        if not len(set(molecular_types_for_metabologram).difference(
             set(self.config.pathways.keys())
         )) == 0:
             logger.error("Unrecognized pathways configuration"
@@ -236,5 +236,8 @@ class DataIntegration(Dataset):
         logger.info("Finished loading pathways dataframes: "
                     "%s", self.config.pathways)
 
-
-
+    def get_names_transcripts_files(self) -> Dict[int, str]:
+        out_dict = {}
+        for i, name in enumerate(self.config.transcripts):
+            out_dict[i] = name
+        return out_dict

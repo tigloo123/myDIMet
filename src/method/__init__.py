@@ -165,6 +165,12 @@ class MetabologramIntegrationConfig(MethodConfig):
     qualityDistanceOverSpan: float
     correction_method: str = "bonferroni"
     impute_values: DictConfig
+    abs_values_scale_color_bar: DictConfig
+    colors_divergent_palette: ListConfig = ["darkcyan", "white", "orangered"]
+    fig_width: float = 7
+    fig_height: float = 8
+    edge_color: ListConfig = ['#000000', '#000000']
+    line_width: ListConfig = [1, 1]
 
     def build(self) -> "MetabologramIntegration":
         return MetabologramIntegration(config=self)
@@ -638,8 +644,6 @@ class MetabologramIntegration(Method):
         logger.info("Current configugration is %s", OmegaConf.to_yaml(cfg))
         logger.info("Will perform metabologram, "
                     "with the following config: %s", self.config)
-        out_table_dir = os.path.join(os.getcwd(), cfg.table_path)
-        os.makedirs(out_table_dir, exist_ok=True)
         # 'data_integration' (data for integration) inherits from dataset
         data_integration: DataIntegration = DataIntegration(
              config=hydra.utils.instantiate(cfg.analysis.dataset))
@@ -649,6 +653,7 @@ class MetabologramIntegration(Method):
 
         self.check_expectations(cfg, data_integration)
         out_plot_dir = os.path.join(os.getcwd(), cfg.figure_path)
+        os.makedirs(out_plot_dir, exist_ok=True)
         file_name = list(cfg.analysis.method.statistical_test.keys())[0]
         test = cfg.analysis.method.statistical_test[file_name]
 

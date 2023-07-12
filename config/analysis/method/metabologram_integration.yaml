@@ -3,6 +3,8 @@ _target_: method.MetabologramIntegrationConfig
 label: metabologram
 name: Perform data integration via metabologram visualization
 
+## parameters for the analytical part of Metabologram:
+
 grouping :
   - condition
   - timepoint
@@ -21,5 +23,20 @@ statistical_test:
   abundances: KW
   mean_enrichment: KW
 
-desired_metrics : 'LogFC' # LogFC|FC supported to date
+
+## parameters for the plotting part of Metabologram:
+
+abs_values_scale_color_bar: # if null, automatically set absolute max value
+  transcripts: null
+  metabolites: null
+
+colors_divergent_palette: ["darkcyan", "white", "orangered"]  # [cold, hot] color is preferrable, hex or names accepted  # TODO reset
+
+fig_width: 7
+fig_height: 5
+
+edge_color: ['#000000', '#000000'] # colors for peripheral and central edges
+line_width: [1, 1.2] #  # widths for peripheral and central edges
+
+
 
