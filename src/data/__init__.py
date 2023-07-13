@@ -1,14 +1,19 @@
 import logging
 import os
 from pathlib import Path
-from typing import Optional, List, Literal, Set, Dict
+from typing import Dict, Literal, Optional, Set
+
+from constants import molecular_types_for_metabologram
+
+import helpers
+
+from hydra.core.hydra_config import HydraConfig
+
+from omegaconf import DictConfig, ListConfig
 
 import pandas as pd
-from hydra.core.hydra_config import HydraConfig
-from omegaconf import ListConfig, DictConfig
+
 from pydantic import BaseModel as PydanticBaseModel
-from constants import molecular_types_for_metabologram
-import helpers
 
 
 class BaseModel(PydanticBaseModel):
@@ -32,7 +37,7 @@ class DatasetConfig(BaseModel):
     conditions: ListConfig
     abundances: str = "AbundanceCorrected"
     mean_enrichment: str = "MeanEnrichment13C"
-    isotopologue_proportions: str = "IsotopologuesProportions"  # isotopologue proportions
+    isotopologue_proportions: str = "IsotopologuesProportions"
     isotopologues: str = "Isotopologues"  # isotopologue absolute values
 
     def build(self) -> "Dataset":
@@ -50,30 +55,44 @@ class Dataset(BaseModel):
     isotopologue_proportions_df: Optional[pd.DataFrame] = None
     isotopologues_df: Optional[pd.DataFrame] = None
     available_datasets: Set[
-        Literal["metadata", "abundances", "mean_enrichment", "isotopologue_proportions", "isotopologues"]
+        Literal[
+            "metadata", "abundances", "mean_enrichment",
+            "isotopologue_proportions", "isotopologues"]
     ] = set()
     compartmentalized_dfs: Dict[str, Dict[str, pd.DataFrame]] = {}
 
     def preload(self):
-        # check if we have a relative or absolute path, compute the absolute path then load the data using pandas
-        # if the path is relative, we assume it is relative to the original CWD (befre hydra changed it)
+        # check if we have a relative or absolute path, compute the absolute
+        # path then load the data using pandas
+        # if the path is relative, we assume it is relative to the original
+        # CWD (befre hydra changed it)
         # store the data in self.metadata
         original_cwd = HydraConfig.get().runtime.cwd
         logger.info("Current config directory is %s", original_cwd)
         if not self.config.subfolder.startswith("/"):
-            self.sub_folder_absolute = os.path.join(Path(original_cwd), "data", self.config.subfolder)
+            self.sub_folder_absolute = os.path.join(Path(original_cwd),
+                                                    "data",
+                                                    self.config.subfolder)
             logger.info("looking for data in %s", self.sub_folder_absolute)
         else:
-            self.sub_folder_absolute = self.self.config.subfolder
+            self.sub_folder_absolute = self.config.subfolder
         self.raw_data_folder = os.path.join(self.sub_folder_absolute, "raw")
-        self.processed_data_folder = os.path.join(self.sub_folder_absolute, "processed")
+        self.processed_data_folder = os.path.join(self.sub_folder_absolute,
+                                                  "processed")
         # start loading the dataframes
         file_paths = [
-            ("metadata", os.path.join(self.raw_data_folder, self.config.metadata + ".csv")),
-            ("abundances", os.path.join(self.raw_data_folder, self.config.abundances + ".csv")),
-            ("mean_enrichment", os.path.join(self.raw_data_folder, self.config.mean_enrichment + ".csv")),
-            ("isotopologue_proportions", os.path.join(self.raw_data_folder, self.config.isotopologue_proportions + ".csv")),
-            ("isotopologues", os.path.join(self.raw_data_folder, self.config.isotopologues + ".csv")),
+            ("metadata", os.path.join(self.raw_data_folder,
+                                      self.config.metadata + ".csv")),
+            ("abundances", os.path.join(self.raw_data_folder,
+                                        self.config.abundances + ".csv")),
+            ("mean_enrichment", os.path.join(
+                self.raw_data_folder,
+                self.config.mean_enrichment + ".csv")),
+            ("isotopologue_proportions", os.path.join(
+                self.raw_data_folder,
+                self.config.isotopologue_proportions + ".csv")),
+            ("isotopologues", os.path.join(
+                self.raw_data_folder, self.config.isotopologues + ".csv")),
         ]
         dfs = []
         for label, file_path in file_paths:
@@ -87,10 +106,15 @@ class Dataset(BaseModel):
                     dfs.append(pd.read_csv(file_path, sep="\t", header=0))
                 self.available_datasets.add(label)
             except FileNotFoundError:
-                logger.critical("File %s not found, continuing, but this might fail miserably", file_path)
+                logger.critical(
+                    "File %s not found, continuing, "
+                    "but this might fail miserably",
+                    file_path)
                 dfs.append(None)
             except Exception as e:
-                logger.error("Failed to load file %s during preload, aborting", file_path)
+                logger.error(
+                    "Failed to load file %s during preload, aborting",
+                    file_path)
                 raise e
 
         (
@@ -126,13 +150,16 @@ class Dataset(BaseModel):
     def split_datafiles_by_compartment(self) -> None:
         frames_dict = {}
         for data_file_label in self.available_datasets:
-            if 'metadata' in data_file_label: continue
+            if 'metadata' in data_file_label:
+                continue
             dataframe_label = data_file_label + "_df"  # TODO: this is fragile!
-            tmp_co_dict = helpers.df_to_dict_by_compartment(getattr(self, dataframe_label),
-                                                            self.metadata_df)  # split by compartment
+            tmp_co_dict = helpers.df_to_dict_by_compartment(
+                getattr(self, dataframe_label),
+                self.metadata_df)  # split by compartment
             frames_dict[data_file_label] = tmp_co_dict
 
-        frames_dict = helpers.drop_all_nan_metabolites_on_comp_frames(frames_dict, self.metadata_df)
+        frames_dict = helpers.drop_all_nan_metabolites_on_comp_frames(
+            frames_dict, self.metadata_df)
         frames_dict = helpers.set_samples_names(frames_dict, self.metadata_df)
         self.compartmentalized_dfs = frames_dict
 
@@ -142,9 +169,13 @@ class Dataset(BaseModel):
         for file_name in self.compartmentalized_dfs.keys():
             for compartment in self.compartmentalized_dfs[file_name].keys():
                 df = self.compartmentalized_dfs[file_name][compartment]
-                output_file_name = f"{self.get_file_for_label(file_name)}-{compartment}.csv"
-                df.to_csv(os.path.join(out_data_path, output_file_name), sep="\t", header=True, index=False)
-                logger.info(f"Saved the {compartment} compartment version of {file_name} in {out_data_path}")
+                tmp_file_name = self.get_file_for_label(file_name)
+                output_file_name = f"{tmp_file_name}-{compartment}.csv"
+                df.to_csv(os.path.join(out_data_path, output_file_name),
+                          sep="\t", header=True, index=False)
+                logger.info(
+                    f"Saved the {compartment} compartment version "
+                    f"of {file_name} in {out_data_path}")
 
     def get_file_for_label(self, label):
         if label == "abundances":
@@ -183,7 +214,7 @@ class DataIntegration(Dataset):
 
     def check_expectations_integration_data(self):
         if not len(set(self.config.transcripts)) == \
-                len(self.config.transcripts):
+               len(self.config.transcripts):
             logger.error(
                 f"Duplicated names: {self.config.transcripts}"
                 f" in transcripts")
@@ -192,7 +223,7 @@ class DataIntegration(Dataset):
                 f" in transcripts")
 
         if not len(set(molecular_types_for_metabologram).difference(
-            set(self.config.pathways.keys())
+                set(self.config.pathways.keys())
         )) == 0:
             logger.error("Unrecognized pathways configuration"
                          " in dataset yaml file")
@@ -223,8 +254,8 @@ class DataIntegration(Dataset):
         for k in self.config.pathways.keys():
             try:
                 path_file = os.path.join(
-                        self.integration_files_folder_absolute,
-                        f"{self.config.pathways[k]}.csv")
+                    self.integration_files_folder_absolute,
+                    f"{self.config.pathways[k]}.csv")
                 pathway_df = pd.read_csv(path_file, sep='\t', header=0)
                 self.pathways_dfs[k] = pathway_df
             except FileNotFoundError:

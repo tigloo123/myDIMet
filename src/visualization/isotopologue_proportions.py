@@ -5,16 +5,22 @@
 """
 import logging
 import os
-from typing import List, Dict
-import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
-import matplotlib.patches as mpatches
-import matplotlib.ticker as mticker
-import matplotlib
-from hydra.core.config_store import ConfigStore
-from omegaconf import DictConfig
+from typing import Dict, List
+
 from data import Dataset
+
+from hydra.core.config_store import ConfigStore
+
+import matplotlib
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+
+from omegaconf import DictConfig
+
+import pandas as pd
+
+import seaborn as sns
 
 
 logger = logging.getLogger(__name__)
@@ -96,7 +102,7 @@ def prepare_means_replicates(piled_df, metaboli_selected) -> Dict:
 
     dfs_dict = dict()
     for i in metaboli_selected:
-        tmp = dfcopy.loc[dfcopy["metabolite"] == i,].reset_index(drop=True)
+        tmp = dfcopy.loc[dfcopy["metabolite"] == i, ].reset_index(drop=True)
         # set m+x as numeric to avoid any bad reordering of stacked m+x
         tmp["m+x"] = tmp["m+x"].str.split("m+", regex=False).str[1]
         tmp["m+x"] = tmp["m+x"].astype(int)

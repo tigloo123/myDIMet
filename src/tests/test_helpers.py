@@ -6,9 +6,11 @@
 
 from unittest import TestCase
 
-import pandas as pd
-import numpy as np
 import helpers
+
+import numpy as np
+
+import pandas as pd
 
 
 class TestHelpers(TestCase):
@@ -55,9 +57,8 @@ class TestHelpers(TestCase):
         values_to_match = [["London", "UK"], ["Paris", "France"]]
 
         # Select rows based on fixed values
-        selected_rows = helpers.first_column_for_column_values(df,
-                                                               columns_to_match,
-                                                               values_to_match)
+        selected_rows = helpers.first_column_for_column_values(
+            df, columns_to_match, values_to_match)
 
         self.assertEqual(selected_rows,
                          [["Alice", "Dave"], ["Charlie", "Francoise"]])
@@ -172,7 +173,7 @@ class TestHelpers(TestCase):
         correction_alpha = 0.05
         correction_method = 'fdr_bh'
         df = helpers.compute_padj(df, correction_alpha,
-                                         correction_method)
+                                  correction_method)
         self.assertAlmostEqual(df['padj'][1], 0.05, 3)
         self.assertTrue(np.isnan(df['padj'][2]))
 
@@ -184,6 +185,3 @@ class TestHelpers(TestCase):
         self.assertRaises(ValueError,
                           helpers.verify_metadata_sample_not_duplicated,
                           metadata)
-
-
-

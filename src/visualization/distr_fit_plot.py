@@ -1,26 +1,34 @@
-import os
-from typing import List
 import logging
-import numpy as np
-import pandas as pd
-import scipy.stats as stats
-import matplotlib.pyplot as plt
-import matplotlib
-from functools import reduce
 import operator
-from omegaconf import DictConfig
+import os
+from functools import reduce
+from typing import List
 
 from constants import (
-    availtest_methods_type,
     assert_literal,
+    availtest_methods_type,
     data_files_keys_type,
 )
-import helpers
+
 from data import Dataset
+
+import helpers
+
+import matplotlib
+import matplotlib.pyplot as plt
+
+import numpy as np
+
+from omegaconf import DictConfig
+
+import pandas as pd
 
 from processing import fit_statistical_distribution
 from processing.differential_analysis import \
     select_rows_with_sufficient_non_nan_values
+
+import scipy.stats as stats
+
 logger = logging.getLogger(__name__)
 
 

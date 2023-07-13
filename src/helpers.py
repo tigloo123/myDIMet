@@ -3,17 +3,21 @@
 """
 @author: Johanna Galvis, Florian Specque, Macha Nikolski
 """
-from typing import Dict, List
-import scipy
-from collections.abc import Iterable
-import statsmodels.stats.multitest as ssm
-import numpy as np
-import pandas as pd
-from scipy import stats
 import logging
+from collections.abc import Iterable
 from functools import reduce
+from typing import Dict, List
 
 from constants import assert_literal, overlap_methods_types
+
+import numpy as np
+
+import pandas as pd
+
+import scipy
+from scipy import stats
+
+import statsmodels.stats.multitest as ssm
 
 logger = logging.getLogger(__name__)
 
@@ -436,17 +440,18 @@ def drop_all_nan_metabolites_on_comp_frames(frames_dict: Dict,
         for compartment in compartments:
             tmp = frames_dict[dataset][compartment]
             tmp = tmp.dropna(how="all", subset=tmp.columns.difference(["ID"]),
-                       axis=0)
+                             axis=0)
             frames_dict[dataset][compartment] = tmp
     return frames_dict
 
 
 def set_samples_names(frames_dict: Dict, metadata: pd.DataFrame) -> Dict:
-    '''
-    Given a dictionary where each dataset has been split in compartment dataframes,
-    goes through them and renames all the columns (sample names) to those that we
-    want to see on the plot; excludes the ID column from this
-    '''
+    """
+    Given a dictionary where each dataset has been split in compartment
+    dataframes,
+    goes through them and renames all the columns (sample names) to those that
+    we want to see on the plot; excludes the ID column from this
+    """
     for dataset, compartments_dict in frames_dict.items():
         for compartment, df in compartments_dict.items():
             original_names = metadata[metadata["short_comp"] == compartment][

@@ -6,29 +6,37 @@
 contexts: mean the comparisons in this version, but evolution should
    handle concentrations/expressions/..., not only the differential results
 """
-import os
-from typing import List, Dict
 import logging
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.colors import Normalize
-from matplotlib.colors import LinearSegmentedColormap
-import matplotlib
-import seaborn as sns
+import os
 import warnings
-from omegaconf import DictConfig
+from typing import Dict, List
 
 from constants import (
-    availtest_methods_type,
     assert_literal,
+    availtest_methods_type,
     data_files_keys_type,
     molecular_types_for_metabologram
 )
 
-from processing import differential_analysis
-import helpers
 from data import DataIntegration
+
+import helpers
+
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import Normalize
+
+import numpy as np
+
+from omegaconf import DictConfig
+
+import pandas as pd
+
+from processing import differential_analysis
+
+import seaborn as sns
+
 
 logger = logging.getLogger(__name__)
 

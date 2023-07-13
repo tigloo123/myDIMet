@@ -3,12 +3,15 @@
 """
 @author: Johanna Galvis, Florian Specque, Macha Nikolski
 """
-
-import warnings
-import numpy as np
-import pandas as pd
-import scipy.stats as stats
 import logging
+import warnings
+
+import numpy as np
+
+import pandas as pd
+
+import scipy.stats as stats
+
 
 logger = logging.getLogger(__name__)
 

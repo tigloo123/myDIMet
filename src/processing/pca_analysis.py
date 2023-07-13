@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+import logging
 import os
 from typing import List, Tuple, Union
-import logging
-import numpy as np
-import pandas as pd
-from sklearn.decomposition import PCA
-from omegaconf import DictConfig
 
 from constants import (
     assert_literal,
     data_files_keys_type,
 )
-import helpers
+
 from data import Dataset
+
+import helpers
+
+import numpy as np
+
+from omegaconf import DictConfig
+
+import pandas as pd
+
+from sklearn.decomposition import PCA
 
 logger = logging.getLogger(__name__)
 

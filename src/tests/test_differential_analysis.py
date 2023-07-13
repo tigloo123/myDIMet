@@ -1,6 +1,9 @@
 from unittest import TestCase
-import pandas as pd
+
 import numpy as np
+
+import pandas as pd
+
 import processing.differential_analysis as differential_analysis
 import processing.fit_statistical_distribution as fit_statistical_distribution
 
@@ -23,19 +26,19 @@ class TestDifferentialAnalysis(TestCase):
         self.assertTrue(result.at[2, 'span_allsamples'] == float(210))
 
     def test_distance_or_overlap(self):
-            data = {
-                "c1": [15, 22, 310],
-                "c2": [8, 30, 220],
-                "c3": [11, 25, 170],
-                "c4": [9, 33, 100],
-            }
-            df = pd.DataFrame(data)
-            result = differential_analysis.distance_or_overlap(
-                df, [["c1", "c2"], ["c3", "c4"]]
-            )
-            self.assertTrue(df.at[0, "distance"] == float(-2))
-            self.assertTrue(df.at[1, "distance"] == float(-5))
-            self.assertTrue(df.at[2, "distance"] == float(50))
+        data = {
+            "c1": [15, 22, 310],
+            "c2": [8, 30, 220],
+            "c3": [11, 25, 170],
+            "c4": [9, 33, 100],
+        }
+        df = pd.DataFrame(data)
+        result = differential_analysis.distance_or_overlap(
+            df, [["c1", "c2"], ["c3", "c4"]]
+        )
+        self.assertTrue(result.at[0, "distance"] == float(-2))
+        self.assertTrue(result.at[1, "distance"] == float(-5))
+        self.assertTrue(result.at[2, "distance"] == float(50))
 
     def test_compute_mann_whitney_all_h0(self):
         array1 = np.array([722, 760, 750, 700])
@@ -56,7 +59,7 @@ class TestDifferentialAnalysis(TestCase):
         self.assertTrue(result.shape[0] == 2)
         self.assertTrue(any(np.array(result['row']) == np.array([0, 3])))
 
-    def test_run_distribution_fitting(self): # TODO: this test is slow, think if needed, or remove
+    def test_run_distribution_fitting(self):
         data = {'zscore': np.random.laplace(loc=0.0, scale=1.6, size=500)}
         df = pd.DataFrame(data)
         best_distribution, args_param = \
@@ -89,7 +92,3 @@ class TestDifferentialAnalysis(TestCase):
         self.assertListEqual(result[1], [['cond1', '3h'], ['cond1', '2.7h']])
         self.assertListEqual(result[2], [['cond2', '3h'], ['cond2', '2.7h']])
         self.assertListEqual(result[3], [['cond1', '2.7h'], ['cond1', '1h']])
-
-
-
-

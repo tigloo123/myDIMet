@@ -3,26 +3,31 @@
 """
 @author: Johanna Galvis, Florian Specque, Macha Nikolski
 """
-
-import os
-from typing import List
 import logging
-import numpy as np
-import pandas as pd
-import scipy.stats
-from functools import reduce
 import operator
-from omegaconf import DictConfig
+import os
+from functools import reduce
+from typing import List
 
 from constants import (
-    availtest_methods_type,
     assert_literal,
+    availtest_methods_type,
     data_files_keys_type,
 )
-from processing import fit_statistical_distribution
+
+from data import Dataset
 
 import helpers
-from data import Dataset
+
+import numpy as np
+
+from omegaconf import DictConfig
+
+import pandas as pd
+
+from processing import fit_statistical_distribution
+
+import scipy.stats
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +193,7 @@ def run_statistical_test(df: pd.DataFrame, comparison: List,
     The comparison is a list with 2 sublists that contain column names
     """
     metabolites = df.index.values
-    stare, pval = [], []
+    pval = []
     for i in df.index:
         a1 = np.array(df.loc[i, comparison[0]], dtype=float)
         a2 = np.array(df.loc[i, comparison[1]], dtype=float)
@@ -244,15 +249,14 @@ def run_statistical_test(df: pd.DataFrame, comparison: List,
             )
             stat_result, pval_result = prm_res.statistic, prm_res.pvalue
 
-        #        stare.append(stat_result)
+        del stat_result  # to avoid flake8 error
+
         pval.append(pval_result)
 
-    #    assert (len(metabolites) == len(stare))
     assert len(metabolites) == len(pval)
     return pd.DataFrame(
         data={
             "metabolite": metabolites,
-            #                              "stat": stare,
             "pvalue": pval,
         }
     )

@@ -1,13 +1,20 @@
 import logging
 import os
 from typing import List
-import matplotlib.pyplot as plt
-import matplotlib
-import pandas as pd
-import seaborn as sns
-from hydra.core.config_store import ConfigStore
-from omegaconf import DictConfig
+
 from data import Dataset
+
+from hydra.core.config_store import ConfigStore
+
+import matplotlib
+import matplotlib.pyplot as plt
+
+from omegaconf import DictConfig
+
+import pandas as pd
+
+import seaborn as sns
+
 
 logger = logging.getLogger(__name__)
 
